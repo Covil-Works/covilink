@@ -1,0 +1,80 @@
+[
+  {
+    "id": "link-mentor-call",
+    "type": "cta-primary",
+    "title": "Agendar Chamada de Mentoria VIP!",
+    "subtitle": "Sessão 1-on-1 exclusiva com horário garantido",
+    "url": "https://calendly.com",
+    "image": "",
+    "badge": "Populares",
+    "iconName": "Calendar",
+    "category": "mentorship",
+    "gridSpan": "full",
+    "active": true
+  },
+  {
+    "id": "link-indigo-beauty",
+    "type": "card-photo",
+    "title": "Programa Indigo Alien Beauty 🌌👽",
+    "subtitle": "Descubra os segredos da estética futurista & maquiagem",
+    "url": "https://example.com/indigo-beauty",
+    "image": "https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=800&q=80",
+    "badge": "Destaque Principal",
+    "iconName": "ExternalLink",
+    "category": "product",
+    "gridSpan": "full",
+    "active": true
+  },
+  {
+    "id": "link-bombshell-glam",
+    "type": "left-thumb",
+    "title": "Bombshell Glam Program",
+    "subtitle": "Curso completo de estilo",
+    "url": "https://example.com/bombshell",
+    "image": "https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?auto=format&fit=crop&w=600&q=80",
+    "badge": "",
+    "iconName": "ExternalLink",
+    "category": "content",
+    "gridSpan": "full",
+    "active": true
+  },
+  {
+    "id": "link-kr-media",
+    "type": "left-thumb",
+    "title": "KR Media: Mentorship & Programs",
+    "subtitle": "Aceleração de negócios criativos",
+    "url": "https://example.com/kr-media",
+    "image": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=600&q=80",
+    "badge": "",
+    "iconName": "ExternalLink",
+    "category": "mentorship",
+    "gridSpan": "full",
+    "active": true
+  },
+  {
+    "id": "link-ko-art",
+    "type": "no-photo",
+    "title": "Galeria Ko-Art 🎨",
+    "subtitle": "Obras de arte & NFTs exclusivos",
+    "url": "https://example.com/ko-art",
+    "image": "",
+    "badge": "",
+    "iconName": "ExternalLink",
+    "category": "product",
+    "gridSpan": "full",
+    "active": true
+  },
+  {
+    "id": "link-calendars-merch",
+    "type": "no-photo",
+    "title": "Calendários & Merch Oficial",
+    "subtitle": "Produtos físicos com frete grátis",
+    "url": "https://example.com/merch",
+    "image": "",
+    "badge": "",
+    "iconName": "ExternalLink",
+    "category": "product",
+    "gridSpan": "full",
+    "active": true
+  }
+]

@@ -1,13 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
-import Image from 'next/image';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import {
   CheckCircle2,
   ExternalLink,
-  ChevronDown,
   Mail,
   Calendar,
   Sparkles,
@@ -24,24 +22,52 @@ import {
   AtSign,
   Globe,
   MessageCircle,
-  Check,
-  Share2
+  Check
 } from 'lucide-react';
-import { ProfileConfig, SocialLink, LinkItem } from '@/lib/links-config';
+import { ProfileConfig, SocialLink, LinkItem, INITIAL_PROFILE } from '@/lib/links-config';
 
 interface LinkPortalProps {
-  profile: ProfileConfig;
-  socials: SocialLink[];
-  links: LinkItem[];
+  profile?: ProfileConfig;
+  socials?: SocialLink[];
+  links?: LinkItem[];
 }
 
 export default function LinkPortal({ profile, socials, links }: LinkPortalProps) {
   const [copiedEmail, setCopiedEmail] = useState(false);
   const [clickNotice, setClickNotice] = useState<string | null>(null);
 
+  // Safe fallback for profile object to prevent white screen crashes
+  const safeProfile: ProfileConfig = {
+    name: profile?.name || INITIAL_PROFILE.name,
+    handle: profile?.handle || INITIAL_PROFILE.handle,
+    isVerified: profile?.isVerified !== false,
+    followersCount: profile?.followersCount || INITIAL_PROFILE.followersCount,
+    tagline: profile?.tagline || INITIAL_PROFILE.tagline,
+    bio: profile?.bio || INITIAL_PROFILE.bio,
+    avatarUrl: profile?.avatarUrl || INITIAL_PROFILE.avatarUrl,
+    coverImageUrl: profile?.coverImageUrl || '',
+    contactEmail: profile?.contactEmail || INITIAL_PROFILE.contactEmail,
+  };
+
+  const [avatarSrc, setAvatarSrc] = useState(safeProfile.avatarUrl || INITIAL_PROFILE.avatarUrl);
+  const [coverSrc, setCoverSrc] = useState(safeProfile.coverImageUrl || '');
+  const [coverFailed, setCoverFailed] = useState(false);
+
+  useEffect(() => {
+    setAvatarSrc(safeProfile.avatarUrl || INITIAL_PROFILE.avatarUrl);
+    setCoverSrc(safeProfile.coverImageUrl || '');
+    setCoverFailed(false);
+  }, [safeProfile.avatarUrl, safeProfile.coverImageUrl]);
+
+  const hasCustomCover = Boolean(
+    coverSrc &&
+    coverSrc.trim() !== '' &&
+    coverSrc !== avatarSrc &&
+    !coverFailed
+  );
+
   // Track click metric via API asynchronously
   const handleLinkClick = (id: string, title: string, url: string) => {
-    // Show quick feedback notice
     setClickNotice(`Métrica registrada para: "${title.slice(0, 20)}..."`);
     setTimeout(() => setClickNotice(null), 2500);
 
@@ -56,7 +82,7 @@ export default function LinkPortal({ profile, socials, links }: LinkPortalProps)
             headers: { 'Content-Type': 'application/json' },
             body: payload,
             keepalive: true,
-          });
+          }).catch(() => {});
         }
       }
     } catch (err) {
@@ -66,16 +92,20 @@ export default function LinkPortal({ profile, socials, links }: LinkPortalProps)
 
   const copyEmailToClipboard = (email: string) => {
     handleLinkClick('link-contact-email', 'E-mail de Contato (Copiado)', `mailto:${email}`);
-    navigator.clipboard.writeText(email);
+    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      navigator.clipboard.writeText(email).catch(() => {});
+    }
     setCopiedEmail(true);
     setTimeout(() => setCopiedEmail(false), 2000);
   };
 
   const getSocialIcon = (platform: string) => {
-    switch (platform) {
+    const p = (platform || '').toLowerCase().trim();
+    switch (p) {
       case 'instagram':
         return <Instagram className="w-5 h-5 text-pink-400" />;
       case 'twitter':
+      case 'x':
         return <Twitter className="w-5 h-5 text-sky-400" />;
       case 'youtube':
         return <Youtube className="w-5 h-5 text-red-500" />;
@@ -106,10 +136,7 @@ export default function LinkPortal({ profile, socials, links }: LinkPortalProps)
   const activeSocials = safeSocials.filter((s) => s && typeof s === 'object' && s.active !== false);
 
   const safeLinks = Array.isArray(links) ? links : [];
-  const primaryCta = safeLinks.find((l) => l && l.type === 'cta-primary' && l.active);
-  const heroCard = safeLinks.find((l) => l && l.type === 'hero-card' && l.active);
-  const gridCards = safeLinks.filter((l) => l && l.type === 'grid-card' && l.active);
-  const contactCard = safeLinks.find((l) => l && l.type === 'contact-card' && l.active);
+  const activeLinks = safeLinks.filter((l) => l && typeof l === 'object' && l.active !== false);
 
   return (
     <div className="min-h-screen bg-[#08090d] text-white flex flex-col items-center pb-16 relative selection:bg-brand-pink/30">
@@ -138,203 +165,279 @@ export default function LinkPortal({ profile, socials, links }: LinkPortalProps)
       <main className="w-full max-w-md px-4 pt-6 z-10 flex flex-col items-center">
         
         {/* Cover Header Banner */}
-        <div className="w-full h-44 rounded-2xl overflow-hidden relative border border-white/10 shadow-2xl mb-[-50px]">
-          <Image
-            src={profile.coverImageUrl || profile.avatarUrl}
-            alt="Cover"
-            fill
-            className="object-cover object-center filter brightness-90"
-            priority
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#08090d] via-transparent to-black/30" />
+        <div className="w-full h-40 sm:h-44 rounded-2xl overflow-hidden relative border border-white/10 shadow-2xl mb-[-48px] bg-dark-800 shrink-0">
+          {hasCustomCover ? (
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img
+              src={coverSrc}
+              alt="Cover"
+              className="absolute inset-0 w-full h-full object-cover object-center filter brightness-90 transition-opacity duration-300"
+              onError={() => setCoverFailed(true)}
+            />
+          ) : (
+            <div className="absolute inset-0 bg-gradient-to-br from-purple-950/60 via-dark-800 to-pink-950/40" />
+          )}
+          <div className="absolute inset-0 bg-gradient-to-t from-[#08090d] via-transparent to-black/30 pointer-events-none" />
           
           {/* Top Admin Quick Switcher */}
           <Link
             href="/admin"
-            className="absolute top-3 right-3 bg-black/50 hover:bg-black/80 border border-white/20 text-white/80 hover:text-white px-3 py-1 rounded-full text-xs font-medium backdrop-blur-md transition flex items-center gap-1.5 shadow-lg group"
+            className="absolute top-3 right-3 bg-black/60 hover:bg-black/80 border border-white/20 text-white/90 hover:text-white px-3 py-1 rounded-full text-xs font-medium backdrop-blur-md transition flex items-center gap-1.5 shadow-lg group z-20"
           >
             <BarChart3 className="w-3.5 h-3.5 text-brand-cyan group-hover:rotate-12 transition-transform" />
             <span>Painel Admin</span>
           </Link>
         </div>
 
-        {/* Profile Avatar */}
-        <div className="relative mb-3">
-          <div className="w-24 h-24 rounded-full p-1 bg-gradient-to-tr from-brand-pink via-brand-purple to-brand-cyan shadow-glow-purple">
-            <div className="w-full h-full rounded-full overflow-hidden relative bg-dark-800">
-              <Image
-                src={profile.avatarUrl}
-                alt={profile.name}
-                fill
-                className="object-cover"
-              />
-            </div>
+        {/* Profile Avatar (Strictly sized, never stretches) */}
+        <div className="relative mb-3 z-10 shrink-0">
+          <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full overflow-hidden relative bg-dark-800 shadow-2xl border-2 border-white/15 shrink-0 mx-auto">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={avatarSrc}
+              alt={safeProfile.name}
+              className="w-full h-full object-cover object-center"
+              onError={() => setAvatarSrc(INITIAL_PROFILE.avatarUrl)}
+            />
           </div>
         </div>
 
         {/* Profile Details */}
-        <div className="text-center mb-5 flex flex-col items-center">
+        <div className="text-center mb-5 flex flex-col items-center w-full">
           <div className="flex items-center justify-center gap-1.5 mb-0.5">
-            <h1 className="text-2xl font-bold tracking-tight text-white">{profile.name}</h1>
-            {profile.isVerified && (
-              <CheckCircle2 className="w-5 h-5 text-blue-400 fill-blue-400/20" />
+            <h1 className="text-2xl font-bold tracking-tight text-white">{safeProfile.name}</h1>
+            {safeProfile.isVerified && (
+              <CheckCircle2 className="w-5 h-5 text-blue-400 fill-blue-400/20 shrink-0" />
             )}
           </div>
           
-          <p className="text-sm text-gray-400 font-medium mb-2">{profile.handle}</p>
+          <p className="text-sm text-gray-400 font-medium mb-2">{safeProfile.handle}</p>
 
           {/* Social Icons Bar */}
-          <div className="flex flex-wrap items-center justify-center gap-2.5 my-2">
-            {activeSocials.map((s) => (
-              <a
-                key={s.id}
-                href={s.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={() => handleLinkClick(s.id, `Social: ${s.title}`, s.url)}
-                className="w-10 h-10 rounded-full bg-white/5 border border-white/10 hover:border-white/30 flex items-center justify-center hover:scale-110 active:scale-95 transition-all shadow-md backdrop-blur-md group"
-                title={s.title}
-              >
-                {getSocialIcon(s.platform)}
-              </a>
-            ))}
-          </div>
+          {activeSocials.length > 0 && (
+            <div className="flex flex-wrap items-center justify-center gap-2.5 my-2">
+              {activeSocials.map((s) => (
+                <a
+                  key={s.id}
+                  href={s.url || '#'}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => handleLinkClick(s.id, `Social: ${s.title}`, s.url)}
+                  className="w-10 h-10 rounded-full bg-white/5 border border-white/10 hover:border-white/30 flex items-center justify-center hover:scale-110 active:scale-95 transition-all shadow-md backdrop-blur-md group"
+                  title={s.title}
+                >
+                  {getSocialIcon(s.platform)}
+                </a>
+              ))}
+            </div>
+          )}
 
-          <div className="flex items-center gap-1 text-xs font-semibold text-gray-300 bg-white/5 px-3 py-1 rounded-full border border-white/10 mt-1 mb-2">
-            <span>{profile.followersCount}</span>
-            <ChevronDown className="w-3.5 h-3.5 text-gray-400" />
-          </div>
-
-          <p className="text-xs text-gray-400 max-w-xs leading-relaxed">{profile.tagline}</p>
+          {safeProfile.tagline && (
+            <p className="text-xs font-medium text-pink-300 max-w-xs leading-relaxed mt-1 mb-1">{safeProfile.tagline}</p>
+          )}
+          {safeProfile.bio && (
+            <p className="text-xs text-gray-400 max-w-xs leading-relaxed">{safeProfile.bio}</p>
+          )}
         </div>
 
-        {/* Primary CTA Button (Book Call / Action) */}
-        {primaryCta && (
-          <motion.div
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            className="w-full mb-4"
-          >
-            <a
-              href={primaryCta.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={() => handleLinkClick(primaryCta.id, primaryCta.title, primaryCta.url)}
-              className="w-full py-4 px-6 rounded-2xl bg-white text-dark-900 font-bold text-center text-sm shadow-xl flex items-center justify-between group hover:bg-gray-100 transition-all border border-white/40 relative overflow-hidden"
-            >
-              <span className="w-6 h-6" /> {/* Spacer */}
-              <span className="tracking-wide text-base font-extrabold">{primaryCta.title}</span>
-              <div className="w-7 h-7 rounded-full bg-dark-900/10 flex items-center justify-center group-hover:bg-dark-900/20 transition">
-                <Calendar className="w-4 h-4 text-dark-900" />
-              </div>
-            </a>
-          </motion.div>
-        )}
+        {/* Render Buttons in exact configured order */}
+        <div className="w-full space-y-3 mb-4">
+          {activeLinks.map((item) => {
+            const hasValidImage = Boolean(item.image && item.image.trim() !== '');
 
-        {/* Hero Featured Card (Linkme Feature Card) */}
-        {heroCard && (
-          <motion.div
-            whileHover={{ scale: 1.01 }}
-            whileTap={{ scale: 0.99 }}
-            className="w-full mb-4"
-          >
-            <a
-              href={heroCard.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={() => handleLinkClick(heroCard.id, heroCard.title, heroCard.url)}
-              className="group relative w-full h-56 rounded-2xl overflow-hidden block border border-white/15 shadow-2xl glass-card-interactive"
-            >
-              {heroCard.image && (
-                <Image
-                  src={heroCard.image}
-                  alt={heroCard.title}
-                  fill
-                  className="object-cover group-hover:scale-105 transition-transform duration-500 filter brightness-90 group-hover:brightness-100"
-                />
-              )}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent" />
-              
-              {/* Badge & Link Icon */}
-              <div className="absolute top-3 right-3">
-                <div className="w-9 h-9 rounded-full bg-black/40 border border-white/20 backdrop-blur-md flex items-center justify-center group-hover:scale-110 transition">
-                  <ExternalLink className="w-4 h-4 text-white" />
-                </div>
-              </div>
+            // Type 1: CTA Primary (Glow Mentoria / Highlight Button)
+            if (item.type === 'cta-primary') {
+              return (
+                <motion.div
+                  key={item.id}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  className="w-full"
+                >
+                  <a
+                    href={item.url || '#'}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={() => handleLinkClick(item.id, item.title, item.url)}
+                    className="w-full py-4 px-6 rounded-2xl bg-white text-dark-900 font-bold text-center text-sm shadow-xl flex items-center justify-between group hover:bg-gray-100 transition-all border border-white/40 relative overflow-hidden"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      {hasValidImage ? (
+                        <div className="w-9 h-9 rounded-xl overflow-hidden relative shrink-0 border border-dark-900/10 bg-dark-800">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={item.image}
+                            alt={item.title}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              (e.currentTarget as HTMLElement).style.display = 'none';
+                            }}
+                          />
+                        </div>
+                      ) : null}
+                      <div className="text-left truncate">
+                        <span className="tracking-wide text-sm font-extrabold block text-dark-900 truncate">{item.title}</span>
+                        {item.subtitle && <span className="text-[11px] text-gray-600 block truncate">{item.subtitle}</span>}
+                      </div>
+                    </div>
+                    <div className="w-7 h-7 rounded-full bg-dark-900/10 flex items-center justify-center group-hover:bg-dark-900/20 transition shrink-0 ml-2">
+                      <Calendar className="w-4 h-4 text-dark-900" />
+                    </div>
+                  </a>
+                </motion.div>
+              );
+            }
 
-              {heroCard.badge && (
-                <div className="absolute top-3 left-3 bg-brand-pink/80 text-white font-semibold text-[10px] uppercase tracking-wider px-2.5 py-1 rounded-full border border-pink-300/30 backdrop-blur-md">
-                  {heroCard.badge}
-                </div>
-              )}
+            // Type 2: Left Miniature Photo Thumbnail ("foto que só fica no lado esquerdo do botão, em miniatura e tal")
+            if (item.type === 'left-thumb') {
+              return (
+                <motion.div
+                  key={item.id}
+                  whileHover={{ scale: 1.015 }}
+                  whileTap={{ scale: 0.985 }}
+                  className="w-full"
+                >
+                  <a
+                    href={item.url || '#'}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={() => handleLinkClick(item.id, item.title, item.url)}
+                    className="w-full p-3 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/25 text-white shadow-xl flex items-center justify-between group transition-all backdrop-blur-md"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      {hasValidImage ? (
+                        <div className="w-12 h-12 rounded-xl overflow-hidden relative shrink-0 border border-white/20 shadow-md bg-dark-800">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={item.image}
+                            alt={item.title}
+                            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                            onError={(e) => {
+                              (e.currentTarget as HTMLElement).style.display = 'none';
+                            }}
+                          />
+                        </div>
+                      ) : (
+                        <div className="w-12 h-12 rounded-xl bg-brand-purple/20 border border-brand-purple/30 flex items-center justify-center shrink-0 text-brand-purple">
+                          <Sparkles className="w-5 h-5" />
+                        </div>
+                      )}
+                      <div className="text-left truncate">
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-sm font-bold text-white truncate group-hover:text-pink-300 transition">{item.title}</h3>
+                          {item.badge && (
+                            <span className="bg-brand-pink/20 text-brand-pink text-[9px] font-bold px-2 py-0.5 rounded-full border border-brand-pink/30 shrink-0">
+                              {item.badge}
+                            </span>
+                          )}
+                        </div>
+                        {item.subtitle && <p className="text-xs text-gray-400 truncate mt-0.5">{item.subtitle}</p>}
+                      </div>
+                    </div>
+                    <div className="w-8 h-8 rounded-full bg-white/5 group-hover:bg-white/15 flex items-center justify-center transition shrink-0 ml-3 border border-white/10">
+                      <ExternalLink className="w-3.5 h-3.5 text-gray-300 group-hover:text-white" />
+                    </div>
+                  </a>
+                </motion.div>
+              );
+            }
 
-              {/* Title & Subtitle */}
-              <div className="absolute bottom-4 left-4 right-4 text-left">
-                <h3 className="text-lg font-bold text-white mb-0.5 leading-snug drop-shadow-md">
-                  {heroCard.title}
-                </h3>
-                {heroCard.subtitle && (
-                  <p className="text-xs text-gray-300 line-clamp-1">{heroCard.subtitle}</p>
-                )}
-              </div>
-            </a>
-          </motion.div>
-        )}
+            // Type 3: Full Photo Card ("botão com foto")
+            if (item.type === 'card-photo' || item.type === 'hero-card') {
+              return (
+                <motion.div
+                  key={item.id}
+                  whileHover={{ scale: 1.01 }}
+                  whileTap={{ scale: 0.99 }}
+                  className="w-full"
+                >
+                  <a
+                    href={item.url || '#'}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={() => handleLinkClick(item.id, item.title, item.url)}
+                    className="group relative w-full h-48 rounded-2xl overflow-hidden block border border-white/15 shadow-2xl glass-card-interactive bg-dark-800 shrink-0"
+                  >
+                    {hasValidImage ? (
+                      /* eslint-disable-next-line @next/next/no-img-element */
+                      <img
+                        src={item.image}
+                        alt={item.title}
+                        className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 filter brightness-90 group-hover:brightness-100"
+                        onError={(e) => {
+                          (e.currentTarget as HTMLElement).style.display = 'none';
+                        }}
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-gradient-to-br from-brand-purple/40 to-dark-900" />
+                    )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/40 to-transparent pointer-events-none" />
+                    
+                    <div className="absolute top-3 right-3">
+                      <div className="w-8 h-8 rounded-full bg-black/50 border border-white/20 backdrop-blur-md flex items-center justify-center group-hover:scale-110 transition">
+                        <ExternalLink className="w-4 h-4 text-white" />
+                      </div>
+                    </div>
 
-        {/* 2x2 Visual Cards Grid */}
-        <div className="w-full grid grid-cols-2 gap-3 mb-4">
-          {gridCards.map((card) => (
-            <motion.div
-              key={card.id}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-            >
-              <a
-                href={card.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={() => handleLinkClick(card.id, card.title, card.url)}
-                className="group relative w-full h-44 rounded-2xl overflow-hidden block border border-white/10 shadow-xl bg-dark-800 glass-card-interactive"
+                    {item.badge && (
+                      <div className="absolute top-3 left-3 bg-brand-pink/80 text-white font-semibold text-[10px] uppercase tracking-wider px-2.5 py-1 rounded-full border border-pink-300/30 backdrop-blur-md">
+                        {item.badge}
+                      </div>
+                    )}
+
+                    <div className="absolute bottom-4 left-4 right-4 text-left">
+                      <h3 className="text-base font-bold text-white mb-0.5 leading-snug drop-shadow-md">
+                        {item.title}
+                      </h3>
+                      {item.subtitle && (
+                        <p className="text-xs text-gray-300 line-clamp-1">{item.subtitle}</p>
+                      )}
+                    </div>
+                  </a>
+                </motion.div>
+              );
+            }
+
+            // Type 4: Simple Button Without Photo ("botão sem foto")
+            return (
+              <motion.div
+                key={item.id}
+                whileHover={{ scale: 1.015 }}
+                whileTap={{ scale: 0.985 }}
+                className="w-full"
               >
-                {card.image ? (
-                  <Image
-                    src={card.image}
-                    alt={card.title}
-                    fill
-                    className="object-cover group-hover:scale-108 transition-transform duration-500 filter brightness-85 group-hover:brightness-100"
-                  />
-                ) : (
-                  <div className="w-full h-full bg-gradient-to-br from-dark-700 to-dark-900" />
-                )}
-                
-                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
-
-                {/* Top Right Icon */}
-                <div className="absolute top-2.5 right-2.5">
-                  <div className="w-7 h-7 rounded-full bg-black/40 border border-white/20 backdrop-blur-md flex items-center justify-center group-hover:scale-110 transition">
-                    <ExternalLink className="w-3.5 h-3.5 text-white" />
+                <a
+                  href={item.url || '#'}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => handleLinkClick(item.id, item.title, item.url)}
+                  className="w-full py-4 px-5 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/25 text-white shadow-xl flex items-center justify-between group transition-all backdrop-blur-md"
+                >
+                  <div className="text-left truncate pr-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-bold tracking-wide text-white group-hover:text-pink-300 transition truncate">{item.title}</span>
+                      {item.badge && (
+                        <span className="bg-brand-pink/20 text-brand-pink text-[9px] font-bold px-2 py-0.5 rounded-full border border-brand-pink/30 shrink-0">
+                          {item.badge}
+                        </span>
+                      )}
+                    </div>
+                    {item.subtitle && <p className="text-xs text-gray-400 truncate mt-0.5">{item.subtitle}</p>}
                   </div>
-                </div>
-
-                {/* Bottom Overlay Title */}
-                <div className="absolute bottom-3 left-3 right-3 text-left">
-                  <h4 className="text-xs font-bold text-white leading-tight drop-shadow-md mb-0.5">
-                    {card.title}
-                  </h4>
-                  {card.subtitle && (
-                    <p className="text-[10px] text-gray-300 line-clamp-1">{card.subtitle}</p>
-                  )}
-                </div>
-              </a>
-            </motion.div>
-          ))}
+                  <div className="w-8 h-8 rounded-full bg-white/5 group-hover:bg-white/15 flex items-center justify-center transition shrink-0 border border-white/10">
+                    <ExternalLink className="w-3.5 h-3.5 text-gray-300 group-hover:text-white" />
+                  </div>
+                </a>
+              </motion.div>
+            );
+          })}
         </div>
 
         {/* Contact Email Block */}
-        {contactCard && (
+        {safeProfile.contactEmail && (
           <div className="w-full mb-6">
             <button
-              onClick={() => copyEmailToClipboard(profile.contactEmail)}
+              onClick={() => copyEmailToClipboard(safeProfile.contactEmail)}
               className="w-full py-3.5 px-4 rounded-xl bg-dark-800/80 hover:bg-dark-700/90 border border-white/10 hover:border-white/20 text-gray-200 text-xs font-medium flex items-center justify-center gap-2 transition-all shadow-md group"
             >
               {copiedEmail ? (
@@ -345,7 +448,7 @@ export default function LinkPortal({ profile, socials, links }: LinkPortalProps)
               ) : (
                 <>
                   <Mail className="w-4 h-4 text-gray-400 group-hover:text-white transition" />
-                  <span className="font-semibold">{profile.contactEmail}</span>
+                  <span className="font-semibold">{safeProfile.contactEmail}</span>
                 </>
               )}
             </button>

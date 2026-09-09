@@ -1,8 +1,10 @@
 import LinkPortal from '@/components/LinkPortal';
-import { INITIAL_PROFILE, INITIAL_LINKS, SocialLink } from '@/lib/links-config';
 import { getSocials } from '@/lib/socials-store';
+import { getProfile } from '@/lib/profile-store';
+import { getLinks } from '@/lib/links-store';
+import { SocialLink, ProfileConfig, LinkItem } from '@/lib/links-config';
 
-// Ensure fresh read of configuration file
+// Ensure fresh read of configuration files on every request
 export const revalidate = 0;
 
 export const metadata = {
@@ -11,19 +13,26 @@ export const metadata = {
 };
 
 export default async function HomePage() {
+  let profile: ProfileConfig;
   let socials: SocialLink[] = [];
+  let links: LinkItem[] = [];
+
   try {
+    profile = await getProfile();
     socials = await getSocials();
+    links = await getLinks();
   } catch (err) {
-    console.error('Error loading socials in HomePage:', err);
+    console.error('Error loading data in HomePage:', err);
+    profile = (await import('@/lib/links-config')).INITIAL_PROFILE;
+    socials = (await import('@/lib/links-config')).INITIAL_SOCIALS;
+    links = (await import('@/lib/links-config')).INITIAL_LINKS;
   }
 
   return (
     <LinkPortal
-      profile={INITIAL_PROFILE}
+      profile={profile}
       socials={Array.isArray(socials) ? socials : []}
-      links={INITIAL_LINKS}
+      links={Array.isArray(links) ? links : []}
     />
   );
 }
-

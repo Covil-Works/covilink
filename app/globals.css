@@ -8,12 +8,29 @@
     --foreground: 255 255 255;
   }
   
+  html {
+    background-color: #08090d;
+    color: #f3f4f6;
+    color-scheme: dark;
+  }
+
   body {
     background-color: #08090d;
     color: #f3f4f6;
     font-family: var(--font-inter), system-ui, -apple-system, sans-serif;
     overflow-x: hidden;
     min-height: 100vh;
+  }
+
+  /* Universal Image Constraints - Prevents Images from blowing up across viewport */
+  img, svg, video, canvas, audio, iframe, embed, object {
+    display: block;
+    max-width: 100%;
+  }
+
+  /* Safe image containers */
+  img {
+    height: auto;
   }
 }
 

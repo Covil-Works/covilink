@@ -39,12 +39,17 @@ import {
   MessageCircle,
   ExternalLink,
   FileCode,
-  Check
+  Check,
+  User,
+  Image as ImageIcon,
+  ArrowUpDown,
+  Edit3,
+  LayoutList
 } from 'lucide-react';
 import { AnalyticsSummary } from '@/lib/analytics';
-import { INITIAL_LINKS, LinkItem, SocialLink, INITIAL_PROFILE } from '@/lib/links-config';
+import { INITIAL_LINKS, LinkItem, SocialLink, INITIAL_PROFILE, ProfileConfig } from '@/lib/links-config';
 
-type TabType = 'metrics' | 'socials' | 'layout';
+type TabType = 'metrics' | 'profile' | 'socials' | 'buttons' | 'reorder';
 
 const PLATFORM_OPTIONS: { label: string; value: SocialLink['platform'] }[] = [
   { label: 'Instagram', value: 'instagram' },
@@ -62,14 +67,33 @@ const PLATFORM_OPTIONS: { label: string; value: SocialLink['platform'] }[] = [
   { label: 'Outro', value: 'other' },
 ];
 
+const BUTTON_TYPE_OPTIONS: { label: string; value: LinkItem['type']; description: string }[] = [
+  { label: 'Botão Sem Foto', value: 'no-photo', description: 'Botão simples com título, subtítulo e link' },
+  { label: 'Botão com Foto na Esquerda (Miniatura)', value: 'left-thumb', description: 'Foto miniatura na esquerda, título e subtítulo ao lado' },
+  { label: 'Botão com Foto em Destaque (Card)', value: 'card-photo', description: 'Card visual grande com imagem de fundo' },
+  { label: 'Botão Chamada VIP (Mentoria)', value: 'cta-primary', description: 'Botão de destaque principal com fundo claro/brilhante' },
+];
+
 export default function AdminDashboard() {
   const [metrics, setMetrics] = useState<AnalyticsSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<TabType>('metrics');
-  const [linksList, setLinksList] = useState<LinkItem[]>(INITIAL_LINKS);
+  
+  // Profile state
+  const [profile, setProfile] = useState<ProfileConfig>(INITIAL_PROFILE);
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [profileSaveSuccess, setProfileSaveSuccess] = useState(false);
+
+  // Socials state
   const [socialsList, setSocialsList] = useState<SocialLink[]>([]);
   const [savingSocials, setSavingSocials] = useState(false);
   const [socialsSaveSuccess, setSocialsSaveSuccess] = useState(false);
+
+  // Links state
+  const [linksList, setLinksList] = useState<LinkItem[]>(INITIAL_LINKS);
+  const [savingLinks, setSavingLinks] = useState(false);
+  const [linksSaveSuccess, setLinksSaveSuccess] = useState(false);
+
   const [resetSuccess, setResetSuccess] = useState(false);
 
   // Fetch metrics from analytics API
@@ -86,7 +110,20 @@ export default function AdminDashboard() {
     }
   };
 
-  // Fetch socials configuration stored in local JSON file
+  // Fetch Profile config
+  const fetchProfile = async () => {
+    try {
+      const res = await fetch('/api/profile');
+      const data = await res.json();
+      if (data && data.profile) {
+        setProfile(data.profile);
+      }
+    } catch (err) {
+      console.error('Error fetching profile:', err);
+    }
+  };
+
+  // Fetch Socials config
   const fetchSocials = async () => {
     try {
       const res = await fetch('/api/socials');
@@ -99,32 +136,52 @@ export default function AdminDashboard() {
     }
   };
 
+  // Fetch Links config
+  const fetchLinks = async () => {
+    try {
+      const res = await fetch('/api/links');
+      const data = await res.json();
+      if (data && Array.isArray(data.links)) {
+        setLinksList(data.links);
+      }
+    } catch (err) {
+      console.error('Error fetching links:', err);
+    }
+  };
+
   useEffect(() => {
     fetchMetrics();
+    fetchProfile();
     fetchSocials();
+    fetchLinks();
     const interval = setInterval(fetchMetrics, 10000);
     return () => clearInterval(interval);
   }, []);
 
-  const handleResetMetrics = async () => {
-    if (!confirm('Deseja reiniciar todas as métricas para o estado de teste original?')) return;
+  // Profile operations
+  const handleSaveProfile = async () => {
+    setSavingProfile(true);
     try {
-      const res = await fetch('/api/metrics', {
+      const res = await fetch('/api/profile', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'reset' }),
+        body: JSON.stringify({ profile }),
       });
       const data = await res.json();
-      if (data.metrics) {
-        setMetrics(data.metrics);
-        setResetSuccess(true);
-        setTimeout(() => setResetSuccess(false), 3000);
+      if (data && data.profile) {
+        setProfile(data.profile);
+        setProfileSaveSuccess(true);
+        setTimeout(() => setProfileSaveSuccess(false), 3500);
       }
     } catch (err) {
-      console.error('Error resetting analytics:', err);
+      console.error('Error saving profile:', err);
+      alert('Erro ao salvar as informações do perfil.');
+    } finally {
+      setSavingProfile(false);
     }
   };
 
+  // Socials operations
   const handleSaveSocials = async () => {
     setSavingSocials(true);
     try {
@@ -141,14 +198,14 @@ export default function AdminDashboard() {
       }
     } catch (err) {
       console.error('Error saving socials JSON:', err);
-      alert('Erro ao salvar as redes sociais no arquivo JSON.');
+      alert('Erro ao salvar as redes sociais.');
     } finally {
       setSavingSocials(false);
     }
   };
 
   const handleResetSocials = async () => {
-    if (!confirm('Restaurar as redes sociais originais no arquivo JSON?')) return;
+    if (!confirm('Restaurar as redes sociais originais?')) return;
     try {
       const res = await fetch('/api/socials', {
         method: 'POST',
@@ -164,12 +221,6 @@ export default function AdminDashboard() {
     } catch (err) {
       console.error('Error resetting socials:', err);
     }
-  };
-
-  const toggleLinkActive = (id: string) => {
-    setLinksList((prev) =>
-      prev.map((item) => (item.id === id ? { ...item, active: !item.active } : item))
-    );
   };
 
   const toggleSocialActive = (id: string) => {
@@ -240,6 +291,111 @@ export default function AdminDashboard() {
     setSocialsList((prev) => [...prev, newItem]);
   };
 
+  // Links operations
+  const handleSaveLinks = async (updatedLinks?: LinkItem[]) => {
+    const targetLinks = updatedLinks || linksList;
+    setSavingLinks(true);
+    try {
+      const res = await fetch('/api/links', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ links: targetLinks }),
+      });
+      const data = await res.json();
+      if (data && Array.isArray(data.links)) {
+        setLinksList(data.links);
+        setLinksSaveSuccess(true);
+        setTimeout(() => setLinksSaveSuccess(false), 3500);
+      }
+    } catch (err) {
+      console.error('Error saving links JSON:', err);
+      alert('Erro ao salvar os botões.');
+    } finally {
+      setSavingLinks(false);
+    }
+  };
+
+  const handleResetLinks = async () => {
+    if (!confirm('Restaurar a lista de botões original?')) return;
+    try {
+      const res = await fetch('/api/links', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'reset' }),
+      });
+      const data = await res.json();
+      if (data.links) {
+        setLinksList(data.links);
+        setLinksSaveSuccess(true);
+        setTimeout(() => setLinksSaveSuccess(false), 3000);
+      }
+    } catch (err) {
+      console.error('Error resetting links:', err);
+    }
+  };
+
+  const toggleLinkActive = (id: string) => {
+    setLinksList((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, active: !item.active } : item))
+    );
+  };
+
+  const updateLinkItem = (id: string, key: keyof LinkItem, value: any) => {
+    setLinksList((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, [key]: value } : item))
+    );
+  };
+
+  const removeLinkItem = (id: string) => {
+    if (!confirm('Tem certeza que deseja excluir este botão?')) return;
+    const updated = linksList.filter((item) => item.id !== id);
+    setLinksList(updated);
+    handleSaveLinks(updated);
+  };
+
+  const moveLinkItem = (index: number, direction: 'up' | 'down') => {
+    const newIndex = direction === 'up' ? index - 1 : index + 1;
+    if (newIndex < 0 || newIndex >= linksList.length) return;
+    const updated = [...linksList];
+    const [moved] = updated.splice(index, 1);
+    updated.splice(newIndex, 0, moved);
+    setLinksList(updated);
+  };
+
+  const addNewButton = (type: LinkItem['type'] = 'no-photo') => {
+    const newItem: LinkItem = {
+      id: `link-${Date.now()}`,
+      type: type,
+      title: type === 'cta-primary' ? 'Novo Botão Mentoria VIP' : 'Novo Botão Personalizado',
+      subtitle: 'Descrição do seu botão',
+      url: 'https://exemplo.com',
+      image: type !== 'no-photo' ? 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=600&q=80' : '',
+      active: true,
+      category: 'custom',
+    };
+    const updated = [...linksList, newItem];
+    setLinksList(updated);
+  };
+
+  const handleResetMetrics = async () => {
+    if (!confirm('Deseja reiniciar todas as métricas para o estado original?')) return;
+    try {
+      const res = await fetch('/api/metrics', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'reset' }),
+      });
+      const data = await res.json();
+      if (data.metrics) {
+        setMetrics(data.metrics);
+        setResetSuccess(true);
+        setTimeout(() => setResetSuccess(false), 3000);
+      }
+    } catch (err) {
+      console.error('Error resetting analytics:', err);
+    }
+  };
+
   const getSocialIconComponent = (platform: string) => {
     switch (platform) {
       case 'instagram':
@@ -290,7 +446,7 @@ export default function AdminDashboard() {
             <div>
               <h2 className="text-base font-bold tracking-tight text-white">Covilink Admin</h2>
               <span className="text-[10px] text-brand-pink font-semibold bg-brand-pink/10 border border-brand-pink/20 px-2 py-0.5 rounded-full">
-                Portal Management
+                Painel de Controle
               </span>
             </div>
           </div>
@@ -298,7 +454,7 @@ export default function AdminDashboard() {
           {/* Navigation Menu Links */}
           <nav className="space-y-1.5">
             <p className="text-[10px] uppercase font-bold text-gray-500 tracking-wider px-3 mb-2">
-              Menu de Navegação
+              Menu de Controle
             </p>
 
             <button
@@ -314,6 +470,18 @@ export default function AdminDashboard() {
             </button>
 
             <button
+              onClick={() => setActiveTab('profile')}
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition text-left ${
+                activeTab === 'profile'
+                  ? 'bg-brand-cyan/20 text-white border border-brand-cyan/40 shadow-glow-cyan'
+                  : 'text-gray-400 hover:text-white hover:bg-white/5 border border-transparent'
+              }`}
+            >
+              <User className={`w-4 h-4 ${activeTab === 'profile' ? 'text-brand-cyan' : ''}`} />
+              <span>Editar Perfil & Fotos</span>
+            </button>
+
+            <button
               onClick={() => setActiveTab('socials')}
               className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition text-left ${
                 activeTab === 'socials'
@@ -322,19 +490,31 @@ export default function AdminDashboard() {
               }`}
             >
               <Globe className={`w-4 h-4 ${activeTab === 'socials' ? 'text-brand-pink' : ''}`} />
-              <span>Redes Sociais (JSON)</span>
+              <span>Redes Sociais</span>
             </button>
 
             <button
-              onClick={() => setActiveTab('layout')}
+              onClick={() => setActiveTab('buttons')}
               className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition text-left ${
-                activeTab === 'layout'
-                  ? 'bg-brand-cyan/20 text-white border border-brand-cyan/40'
+                activeTab === 'buttons'
+                  ? 'bg-purple-600/20 text-white border border-purple-500/40'
                   : 'text-gray-400 hover:text-white hover:bg-white/5 border border-transparent'
               }`}
             >
-              <Layers className={`w-4 h-4 ${activeTab === 'layout' ? 'text-brand-cyan' : ''}`} />
-              <span>Gerenciador de Links</span>
+              <Edit3 className={`w-4 h-4 ${activeTab === 'buttons' ? 'text-purple-400' : ''}`} />
+              <span>Criar & Modificar Botões</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('reorder')}
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition text-left ${
+                activeTab === 'reorder'
+                  ? 'bg-amber-500/20 text-white border border-amber-500/40'
+                  : 'text-gray-400 hover:text-white hover:bg-white/5 border border-transparent'
+              }`}
+            >
+              <ArrowUpDown className={`w-4 h-4 ${activeTab === 'reorder' ? 'text-amber-400' : ''}`} />
+              <span>Reordenar Ordem</span>
             </button>
           </nav>
 
@@ -345,10 +525,10 @@ export default function AdminDashboard() {
           <div className="p-3 rounded-xl bg-white/5 border border-white/10 text-[11px] space-y-1">
             <div className="flex items-center gap-1.5 text-green-400 font-semibold">
               <FileCode className="w-3.5 h-3.5" />
-              <span>Config em JSON Rápido</span>
+              <span>Armazenamento Instantâneo</span>
             </div>
             <p className="text-[10px] text-gray-400">
-              Redes salvas em <code className="text-gray-300">data/socials.json</code> com 0ms de busca de banco!
+              Alterações salvas instantaneamente no diretório <code className="text-gray-300">data/</code>.
             </p>
           </div>
 
@@ -367,38 +547,62 @@ export default function AdminDashboard() {
       <nav className="md:hidden fixed bottom-4 left-4 right-4 z-50 bg-[#0f111a]/95 backdrop-blur-xl border border-white/15 rounded-2xl shadow-2xl p-2 flex items-center justify-around">
         <button
           onClick={() => setActiveTab('metrics')}
-          className={`flex flex-col items-center gap-1 px-4 py-2 rounded-xl text-[11px] font-bold transition ${
+          className={`flex flex-col items-center gap-1 px-2.5 py-1.5 rounded-xl text-[10px] font-bold transition ${
             activeTab === 'metrics'
               ? 'bg-brand-purple/20 text-brand-purple border border-brand-purple/30'
               : 'text-gray-400 hover:text-white'
           }`}
         >
-          <BarChart3 className="w-5 h-5" />
+          <BarChart3 className="w-4 h-4" />
           <span>Métricas</span>
         </button>
 
         <button
+          onClick={() => setActiveTab('profile')}
+          className={`flex flex-col items-center gap-1 px-2.5 py-1.5 rounded-xl text-[10px] font-bold transition ${
+            activeTab === 'profile'
+              ? 'bg-brand-cyan/20 text-brand-cyan border border-brand-cyan/30'
+              : 'text-gray-400 hover:text-white'
+          }`}
+        >
+          <User className="w-4 h-4" />
+          <span>Perfil</span>
+        </button>
+
+        <button
           onClick={() => setActiveTab('socials')}
-          className={`flex flex-col items-center gap-1 px-4 py-2 rounded-xl text-[11px] font-bold transition ${
+          className={`flex flex-col items-center gap-1 px-2.5 py-1.5 rounded-xl text-[10px] font-bold transition ${
             activeTab === 'socials'
               ? 'bg-brand-pink/20 text-brand-pink border border-brand-pink/30'
               : 'text-gray-400 hover:text-white'
           }`}
         >
-          <Globe className="w-5 h-5" />
-          <span>Redes Sociais</span>
+          <Globe className="w-4 h-4" />
+          <span>Redes</span>
         </button>
 
         <button
-          onClick={() => setActiveTab('layout')}
-          className={`flex flex-col items-center gap-1 px-4 py-2 rounded-xl text-[11px] font-bold transition ${
-            activeTab === 'layout'
-              ? 'bg-brand-cyan/20 text-brand-cyan border border-brand-cyan/30'
+          onClick={() => setActiveTab('buttons')}
+          className={`flex flex-col items-center gap-1 px-2.5 py-1.5 rounded-xl text-[10px] font-bold transition ${
+            activeTab === 'buttons'
+              ? 'bg-purple-600/20 text-purple-400 border border-purple-500/30'
               : 'text-gray-400 hover:text-white'
           }`}
         >
-          <Layers className="w-5 h-5" />
-          <span>Links</span>
+          <Edit3 className="w-4 h-4" />
+          <span>Botões</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('reorder')}
+          className={`flex flex-col items-center gap-1 px-2.5 py-1.5 rounded-xl text-[10px] font-bold transition ${
+            activeTab === 'reorder'
+              ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+              : 'text-gray-400 hover:text-white'
+          }`}
+        >
+          <ArrowUpDown className="w-4 h-4" />
+          <span>Ordem</span>
         </button>
       </nav>
 
@@ -417,11 +621,13 @@ export default function AdminDashboard() {
             <div>
               <h1 className="text-xl font-bold tracking-tight text-white">
                 {activeTab === 'metrics' && 'Métricas & Analytics'}
+                {activeTab === 'profile' && 'Editar Perfil & Fotos'}
                 {activeTab === 'socials' && 'Gerenciador de Redes Sociais'}
-                {activeTab === 'layout' && 'Gerenciador de Links & Mídias'}
+                {activeTab === 'buttons' && 'Criar & Modificar Botões'}
+                {activeTab === 'reorder' && 'Reordenar Ordem dos Botões'}
               </h1>
               <p className="text-xs text-gray-400 mt-0.5">
-                Painel de controle para {INITIAL_PROFILE.name} ({INITIAL_PROFILE.handle})
+                Gerenciando {profile.name} ({profile.handle})
               </p>
             </div>
           </div>
@@ -438,18 +644,36 @@ export default function AdminDashboard() {
               </button>
             )}
 
+            {activeTab === 'profile' && (
+              <button
+                onClick={handleSaveProfile}
+                disabled={savingProfile}
+                className="px-4 py-2 rounded-xl bg-gradient-to-r from-brand-cyan to-brand-purple text-white font-bold text-xs hover:opacity-90 flex items-center gap-1.5 shadow-lg transition disabled:opacity-50"
+              >
+                {savingProfile ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                <span>Salvar Perfil</span>
+              </button>
+            )}
+
             {activeTab === 'socials' && (
               <button
                 onClick={handleSaveSocials}
                 disabled={savingSocials}
                 className="px-4 py-2 rounded-xl bg-gradient-to-r from-brand-pink to-brand-purple text-white font-bold text-xs hover:opacity-90 flex items-center gap-1.5 shadow-lg shadow-pink-500/20 transition disabled:opacity-50"
               >
-                {savingSocials ? (
-                  <RefreshCw className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Save className="w-4 h-4" />
-                )}
-                <span>Salvar no JSON</span>
+                {savingSocials ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                <span>Salvar Redes</span>
+              </button>
+            )}
+
+            {(activeTab === 'buttons' || activeTab === 'reorder') && (
+              <button
+                onClick={() => handleSaveLinks()}
+                disabled={savingLinks}
+                className="px-4 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-brand-pink text-white font-bold text-xs hover:opacity-90 flex items-center gap-1.5 shadow-lg transition disabled:opacity-50"
+              >
+                {savingLinks ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                <span>Salvar Botões</span>
               </button>
             )}
 
@@ -464,51 +688,25 @@ export default function AdminDashboard() {
           </div>
         </header>
 
-        {/* Banner Database status */}
-        <div className="rounded-2xl p-4 bg-dark-800/90 border border-amber-500/30 backdrop-blur-md flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-xl mb-6">
-          <div className="flex items-start gap-3">
-            <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center shrink-0 mt-0.5">
-              <Database className="w-5 h-5 text-amber-400" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-sm font-bold text-amber-200">
-                  {metrics?.isDatabaseConnected
-                    ? 'Conectado ao Neon PostgreSQL (Produção)'
-                    : 'Configuração Rápida em JSON & Métricas em Memória'}
-                </h3>
-                <span className="bg-amber-400/20 text-amber-300 text-[10px] font-semibold px-2 py-0.5 rounded-md">
-                  {metrics?.isDatabaseConnected ? 'Neon DB Ativo' : '0ms Latência DB'}
-                </span>
-              </div>
-              <p className="text-xs text-gray-400 mt-1 max-w-2xl leading-relaxed">
-                As redes sociais são salvas e lidas diretamente de arquivos de configuração (<code className="text-amber-300 bg-black/40 px-1 py-0.5 rounded">data/socials.json</code>) para velocidade máxima instantânea.
-              </p>
-            </div>
-          </div>
-
-          {activeTab === 'metrics' && (
-            <button
-              onClick={handleResetMetrics}
-              className="px-3 py-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-300 text-xs font-medium flex items-center gap-1.5 transition shrink-0"
-            >
-              <RotateCcw className="w-3.5 h-3.5" />
-              <span>Resetar Métricas</span>
-            </button>
-          )}
-        </div>
-
-        {resetSuccess && (
+        {/* Global Notifications */}
+        {profileSaveSuccess && (
           <div className="mb-6 bg-green-500/20 border border-green-500/40 text-green-200 text-xs px-4 py-2.5 rounded-xl flex items-center gap-2">
             <CheckCircle2 className="w-4 h-4 text-green-400" />
-            <span>Métricas restauradas com sucesso!</span>
+            <span>Informações e fotos do perfil salvas com sucesso!</span>
           </div>
         )}
 
         {socialsSaveSuccess && (
           <div className="mb-6 bg-green-500/20 border border-green-500/40 text-green-200 text-xs px-4 py-2.5 rounded-xl flex items-center gap-2">
             <Check className="w-4 h-4 text-green-400" />
-            <span>Redes sociais salvas no arquivo JSON (<code className="text-green-300 font-mono">data/socials.json</code>) com sucesso!</span>
+            <span>Redes sociais salvas no arquivo JSON com sucesso!</span>
+          </div>
+        )}
+
+        {linksSaveSuccess && (
+          <div className="mb-6 bg-green-500/20 border border-green-500/40 text-green-200 text-xs px-4 py-2.5 rounded-xl flex items-center gap-2">
+            <Check className="w-4 h-4 text-green-400" />
+            <span>Configuração e ordem dos botões salvas com sucesso!</span>
           </div>
         )}
 
@@ -581,12 +779,11 @@ export default function AdminDashboard() {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              
               <div className="lg:col-span-2 glass-card rounded-2xl p-6 border border-white/10">
                 <div className="flex items-center justify-between mb-5">
                   <div>
                     <h3 className="text-base font-bold text-white">Detalhamento de Cliques por Link</h3>
-                    <p className="text-xs text-gray-400">Contagem de cliques individuais para cada botão e card de mídia</p>
+                    <p className="text-xs text-gray-400">Contagem de cliques individuais para cada botão</p>
                   </div>
                   <span className="text-xs font-semibold text-brand-purple bg-brand-purple/10 px-2.5 py-1 rounded-full border border-brand-purple/20">
                     {metrics ? Object.keys(metrics.clicksByLink).length : 0} links rastreados
@@ -730,23 +927,166 @@ export default function AdminDashboard() {
                     </div>
                   )}
                 </div>
-
-                <div className="glass-card rounded-2xl p-5 border border-white/10 bg-gradient-to-br from-dark-800 to-purple-950/30">
-                  <div className="flex items-center gap-2 text-brand-purple font-bold text-xs mb-2">
-                    <Sparkles className="w-4 h-4" />
-                    <span>Velocidade Ultrarrápida em JSON</span>
-                  </div>
-                  <p className="text-xs text-gray-300 leading-relaxed">
-                    Sua configuração de redes sociais não precisa fazer queries lentas no banco de dados. Os arquivos JSON na pasta <code className="text-pink-300 bg-black/40 px-1 py-0.5 rounded">data/socials.json</code> são lidos instantaneamente pelo servidor.
-                  </p>
-                </div>
-
               </div>
             </div>
           </div>
         )}
 
-        {/* TAB 2: SOCIAL MEDIA MANAGER */}
+        {/* TAB 2: PROFILE MANAGER */}
+        {activeTab === 'profile' && (
+          <div className="glass-card rounded-2xl p-6 border border-white/10 space-y-6">
+            <div className="flex items-center justify-between pb-4 border-b border-white/10">
+              <div>
+                <h3 className="text-base font-bold text-white flex items-center gap-2">
+                  <User className="w-5 h-5 text-brand-cyan" />
+                  <span>Editar Perfil & Fotos</span>
+                </h3>
+                <p className="text-xs text-gray-400 mt-1">
+                  Modifique o nome, arroba (@), foto de perfil, foto de capa e descrições do perfil.
+                </p>
+              </div>
+
+              <button
+                onClick={handleSaveProfile}
+                disabled={savingProfile}
+                className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-brand-cyan to-brand-purple text-white font-bold text-xs hover:opacity-90 flex items-center gap-2 shadow-lg transition disabled:opacity-50"
+              >
+                {savingProfile ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                <span>Salvar Alterações</span>
+              </button>
+            </div>
+
+            {/* Profile Live Preview Card */}
+            <div className="p-4 rounded-2xl bg-white/5 border border-white/10 flex flex-col items-center relative overflow-hidden">
+              <div className="w-full h-28 rounded-xl relative overflow-hidden mb-[-36px] bg-dark-800 border border-white/10">
+                {profile.coverImageUrl && profile.coverImageUrl.trim() !== '' ? (
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  <img
+                    src={profile.coverImageUrl}
+                    alt="Previa da Capa"
+                    className="absolute inset-0 w-full h-full object-cover"
+                    onError={(e) => {
+                      (e.currentTarget as HTMLElement).style.display = 'none';
+                    }}
+                  />
+                ) : (
+                  <div className="w-full h-full bg-gradient-to-br from-purple-950/60 via-dark-800 to-pink-950/40" />
+                )}
+                <div className="absolute inset-0 bg-gradient-to-t from-[#08090d] via-transparent to-black/20 pointer-events-none" />
+              </div>
+              <div className="w-20 h-20 rounded-full overflow-hidden relative bg-dark-800 shadow-xl relative z-10 border-2 border-white/15 shrink-0">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={profile.avatarUrl || INITIAL_PROFILE.avatarUrl}
+                  alt="Previa do Perfil"
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    (e.currentTarget as HTMLImageElement).src = INITIAL_PROFILE.avatarUrl;
+                  }}
+                />
+              </div>
+              <div className="text-center mt-2">
+                <h4 className="font-bold text-white text-base">{profile.name || 'Nome'}</h4>
+                <p className="text-xs text-gray-400 font-medium">{profile.handle || '@handle'}</p>
+                {profile.tagline && <p className="text-xs font-semibold text-pink-300 mt-1">{profile.tagline}</p>}
+                {profile.bio && <p className="text-[11px] text-gray-400 mt-0.5">{profile.bio}</p>}
+              </div>
+            </div>
+
+            {/* Profile Form Fields */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="text-xs font-bold text-gray-300 block mb-1">Nome Exibido</label>
+                <input
+                  type="text"
+                  value={profile.name}
+                  onChange={(e) => setProfile({ ...profile, name: e.target.value })}
+                  placeholder="Seu Nome"
+                  className="w-full bg-dark-900 border border-white/15 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-brand-cyan"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-gray-300 block mb-1">Arroba / Handle (@)</label>
+                <input
+                  type="text"
+                  value={profile.handle}
+                  onChange={(e) => setProfile({ ...profile, handle: e.target.value })}
+                  placeholder="@seuusuario"
+                  className="w-full bg-dark-900 border border-white/15 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-brand-cyan"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-gray-300 block mb-1">Descrição / Subtítulo Principal</label>
+                <input
+                  type="text"
+                  value={profile.tagline}
+                  onChange={(e) => setProfile({ ...profile, tagline: e.target.value })}
+                  placeholder="Ex: Galactic Glam Goddess 🛸"
+                  className="w-full bg-dark-900 border border-white/15 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-brand-cyan"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-gray-300 block mb-1">E-mail Profissional de Contato</label>
+                <input
+                  type="email"
+                  value={profile.contactEmail}
+                  onChange={(e) => setProfile({ ...profile, contactEmail: e.target.value })}
+                  placeholder="contato@exemplo.com"
+                  className="w-full bg-dark-900 border border-white/15 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-brand-cyan font-mono"
+                />
+              </div>
+
+              <div className="md:col-span-2">
+                <label className="text-xs font-bold text-gray-300 block mb-1">Bio / Descrição Secundária</label>
+                <textarea
+                  rows={2}
+                  value={profile.bio}
+                  onChange={(e) => setProfile({ ...profile, bio: e.target.value })}
+                  placeholder="Conte um pouco sobre você..."
+                  className="w-full bg-dark-900 border border-white/15 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-brand-cyan resize-none"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-gray-300 block mb-1">URL da Foto de Perfil (Avatar)</label>
+                <input
+                  type="text"
+                  value={profile.avatarUrl}
+                  onChange={(e) => setProfile({ ...profile, avatarUrl: e.target.value })}
+                  placeholder="https://..."
+                  className="w-full bg-dark-900 border border-white/15 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-brand-cyan font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-gray-300 block mb-1">URL da Foto de Capa (Header)</label>
+                <input
+                  type="text"
+                  value={profile.coverImageUrl || ''}
+                  onChange={(e) => setProfile({ ...profile, coverImageUrl: e.target.value })}
+                  placeholder="https://..."
+                  className="w-full bg-dark-900 border border-white/15 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-brand-cyan font-mono"
+                />
+              </div>
+            </div>
+
+            <div className="pt-4 border-t border-white/10 flex justify-end">
+              <button
+                onClick={handleSaveProfile}
+                disabled={savingProfile}
+                className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-brand-cyan to-brand-purple text-white font-bold text-xs hover:opacity-90 flex items-center gap-2 shadow-lg transition disabled:opacity-50"
+              >
+                {savingProfile ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                <span>Salvar Perfil</span>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* TAB 3: SOCIAL MEDIA MANAGER */}
         {activeTab === 'socials' && (
           <div className="glass-card rounded-2xl p-6 border border-white/10 space-y-6">
             
@@ -757,7 +1097,7 @@ export default function AdminDashboard() {
                   <span>Configurar Botões de Rede Social</span>
                 </h3>
                 <p className="text-xs text-gray-400 mt-1 max-w-xl">
-                  Selecione quais redes sociais você quer exibir na página principal, altere seus nomes, links e ordens. Tudo é gravado no arquivo JSON local sem sobrecarregar o banco de dados.
+                  Gerencie os ícones de redes sociais exibidos no topo do seu perfil.
                 </p>
               </div>
 
@@ -783,12 +1123,8 @@ export default function AdminDashboard() {
                   disabled={savingSocials}
                   className="px-4 py-2 rounded-xl bg-gradient-to-r from-brand-pink to-brand-purple text-white font-bold text-xs hover:opacity-90 flex items-center gap-1.5 shadow-lg shadow-pink-500/20 transition disabled:opacity-50"
                 >
-                  {savingSocials ? (
-                    <RefreshCw className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Save className="w-4 h-4" />
-                  )}
-                  <span>Salvar no JSON</span>
+                  {savingSocials ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                  <span>Salvar Redes</span>
                 </button>
               </div>
             </div>
@@ -823,7 +1159,7 @@ export default function AdminDashboard() {
             <div className="space-y-3 pt-2">
               {socialsList.length === 0 ? (
                 <div className="text-center py-10 text-gray-500 text-xs border border-dashed border-white/10 rounded-2xl">
-                  Nenhuma rede social configurada. Clique em um dos atalhos acima para adicionar!
+                  Nenhuma rede social configurada.
                 </div>
               ) : (
                 socialsList.map((item, idx) => (
@@ -835,14 +1171,12 @@ export default function AdminDashboard() {
                         : 'bg-black/40 border-white/5 opacity-60'
                     }`}
                   >
-                    {/* Left: Drag / Move & Platform Icon */}
                     <div className="flex items-center gap-3 w-full md:w-auto">
                       <div className="flex flex-col gap-1">
                         <button
                           onClick={() => moveSocialItem(idx, 'up')}
                           disabled={idx === 0}
                           className="p-1 rounded bg-white/5 hover:bg-white/10 text-gray-400 disabled:opacity-20 hover:text-white transition"
-                          title="Mover para cima"
                         >
                           <ArrowUp className="w-3.5 h-3.5" />
                         </button>
@@ -850,7 +1184,6 @@ export default function AdminDashboard() {
                           onClick={() => moveSocialItem(idx, 'down')}
                           disabled={idx === socialsList.length - 1}
                           className="p-1 rounded bg-white/5 hover:bg-white/10 text-gray-400 disabled:opacity-20 hover:text-white transition"
-                          title="Mover para baixo"
                         >
                           <ArrowDown className="w-3.5 h-3.5" />
                         </button>
@@ -860,7 +1193,6 @@ export default function AdminDashboard() {
                         {getSocialIconComponent(item.platform)}
                       </div>
 
-                      {/* Select Platform */}
                       <div className="flex-1 md:w-40">
                         <label className="text-[10px] text-gray-400 uppercase font-semibold block mb-1">
                           Plataforma
@@ -879,11 +1211,10 @@ export default function AdminDashboard() {
                       </div>
                     </div>
 
-                    {/* Middle: Title & URL fields */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full md:flex-1">
                       <div>
                         <label className="text-[10px] text-gray-400 uppercase font-semibold block mb-1">
-                          Título / Rótulo
+                          Rótulo / Nome
                         </label>
                         <input
                           type="text"
@@ -896,7 +1227,7 @@ export default function AdminDashboard() {
 
                       <div>
                         <label className="text-[10px] text-gray-400 uppercase font-semibold block mb-1">
-                          URL Completa do Perfil
+                          URL do Perfil
                         </label>
                         <input
                           type="text"
@@ -908,7 +1239,6 @@ export default function AdminDashboard() {
                       </div>
                     </div>
 
-                    {/* Right: Active Switch & Delete */}
                     <div className="flex items-center gap-2 self-end md:self-auto shrink-0 pt-2 md:pt-0 border-t md:border-0 border-white/10 w-full md:w-auto justify-end">
                       <button
                         onClick={() => toggleSocialActive(item.id)}
@@ -924,7 +1254,6 @@ export default function AdminDashboard() {
                       <button
                         onClick={() => removeSocialItem(item.id)}
                         className="p-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 transition"
-                        title="Excluir rede social"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -934,92 +1263,347 @@ export default function AdminDashboard() {
               )}
             </div>
 
-            {/* Bottom Save Bar */}
             <div className="pt-4 border-t border-white/10 flex items-center justify-between">
               <span className="text-xs text-gray-400">
-                {socialsList.filter((s) => s.active !== false).length} redes ativas para exibição pública
+                {socialsList.filter((s) => s.active !== false).length} redes ativas
               </span>
 
               <button
                 onClick={handleSaveSocials}
                 disabled={savingSocials}
-                className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-brand-pink to-brand-purple text-white font-bold text-xs hover:opacity-90 flex items-center gap-2 shadow-lg shadow-pink-500/20 transition disabled:opacity-50"
+                className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-brand-pink to-brand-purple text-white font-bold text-xs hover:opacity-90 flex items-center gap-2 shadow-lg transition disabled:opacity-50"
               >
-                {savingSocials ? (
-                  <RefreshCw className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Save className="w-4 h-4" />
-                )}
-                <span>Salvar Todas as Redes (JSON)</span>
+                {savingSocials ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                <span>Salvar Redes</span>
               </button>
             </div>
 
           </div>
         )}
 
-        {/* TAB 3: LAYOUT & LINKS MANAGER */}
-        {activeTab === 'layout' && (
-          <div className="glass-card rounded-2xl p-6 border border-white/10">
-            <div className="flex items-center justify-between mb-6">
+        {/* TAB 4: BUTTON MANAGER (CREATE & EDIT BUTTONS) */}
+        {activeTab === 'buttons' && (
+          <div className="glass-card rounded-2xl p-6 border border-white/10 space-y-6">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-white/10">
               <div>
-                <h3 className="text-base font-bold text-white">Gerenciador de Layout & Mídias</h3>
-                <p className="text-xs text-gray-400">
-                  Ative ou desative links e mídias visíveis na página principal sem alterar o código
+                <h3 className="text-base font-bold text-white flex items-center gap-2">
+                  <Edit3 className="w-5 h-5 text-purple-400" />
+                  <span>Criar & Modificar Botões</span>
+                </h3>
+                <p className="text-xs text-gray-400 mt-1 max-w-xl">
+                  Crie novos botões com ou sem fotos (miniatura na esquerda ou card completo), altere textos e URLs.
                 </p>
+              </div>
+
+              <div className="flex items-center gap-2 self-stretch sm:self-auto">
+                <button
+                  onClick={handleResetLinks}
+                  className="px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-semibold text-gray-300 hover:text-white flex items-center gap-1.5 transition"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  <span>Restaurar Padrão</span>
+                </button>
+
+                <button
+                  onClick={() => addNewButton('no-photo')}
+                  className="px-3.5 py-2 rounded-xl bg-purple-600/30 hover:bg-purple-600/50 border border-purple-500/40 text-xs font-bold text-white flex items-center gap-1.5 transition shadow-lg"
+                >
+                  <Plus className="w-4 h-4 text-purple-300" />
+                  <span>Criar Novo Botão</span>
+                </button>
+
+                <button
+                  onClick={() => handleSaveLinks()}
+                  disabled={savingLinks}
+                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-brand-pink text-white font-bold text-xs hover:opacity-90 flex items-center gap-1.5 shadow-lg transition disabled:opacity-50"
+                >
+                  {savingLinks ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                  <span>Salvar Alterações</span>
+                </button>
               </div>
             </div>
 
-            <div className="space-y-4">
+            {/* Quick Create Buttons Shortcuts */}
+            <div className="p-4 rounded-xl bg-white/5 border border-white/10 space-y-2">
+              <p className="text-xs font-bold text-gray-300">Tipos de Botão para Adicionar:</p>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <button
+                  onClick={() => addNewButton('no-photo')}
+                  className="p-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-left transition flex items-center gap-3 group"
+                >
+                  <div className="w-8 h-8 rounded-lg bg-gray-700/50 border border-white/10 flex items-center justify-center shrink-0">
+                    <Edit3 className="w-4 h-4 text-gray-300 group-hover:text-white" />
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold text-white">Botão sem Foto</div>
+                    <div className="text-[10px] text-gray-400">Texto simples e direto</div>
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => addNewButton('left-thumb')}
+                  className="p-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-left transition flex items-center gap-3 group"
+                >
+                  <div className="w-8 h-8 rounded-lg bg-pink-500/20 border border-pink-500/30 flex items-center justify-center shrink-0">
+                    <ImageIcon className="w-4 h-4 text-pink-300" />
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold text-white">Miniatura na Esquerda</div>
+                    <div className="text-[10px] text-gray-400">Foto pequena à esquerda</div>
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => addNewButton('card-photo')}
+                  className="p-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-left transition flex items-center gap-3 group"
+                >
+                  <div className="w-8 h-8 rounded-lg bg-cyan-500/20 border border-cyan-500/30 flex items-center justify-center shrink-0">
+                    <Sparkles className="w-4 h-4 text-cyan-300" />
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold text-white">Botão com Foto (Card)</div>
+                    <div className="text-[10px] text-gray-400">Card grande com imagem</div>
+                  </div>
+                </button>
+              </div>
+            </div>
+
+            {/* List of Buttons for Editing */}
+            <div className="space-y-4 pt-2">
               {linksList.map((item) => (
                 <div
                   key={item.id}
-                  className={`p-4 rounded-2xl border transition flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 ${
+                  className={`p-4 rounded-2xl border transition flex flex-col gap-4 ${
                     item.active
-                      ? 'bg-white/5 border-white/15'
+                      ? 'bg-white/5 border-white/15 shadow-lg'
+                      : 'bg-black/40 border-white/5 opacity-60'
+                  }`}
+                >
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3 border-b border-white/10">
+                    <div className="flex items-center gap-3">
+                      <span className="w-6 h-6 rounded-full bg-white/10 text-[10px] font-bold flex items-center justify-center text-gray-300">
+                        {item.type === 'cta-primary' ? '⚡' : item.type === 'left-thumb' ? '📷' : item.type === 'card-photo' ? '🖼️' : '🔗'}
+                      </span>
+                      <div>
+                        <h4 className="text-sm font-bold text-white">{item.title || 'Sem título'}</h4>
+                        <p className="text-[11px] text-gray-400">
+                          {BUTTON_TYPE_OPTIONS.find((b) => b.value === item.type)?.label || item.type}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 self-end sm:self-auto">
+                      <button
+                        onClick={() => toggleLinkActive(item.id)}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition border ${
+                          item.active
+                            ? 'bg-green-500/20 text-green-300 border-green-500/40 hover:bg-green-500/30'
+                            : 'bg-gray-800 text-gray-400 border-gray-700 hover:bg-gray-700'
+                        }`}
+                      >
+                        {item.active ? 'Ativo na Página' : 'Oculto'}
+                      </button>
+
+                      <button
+                        onClick={() => removeLinkItem(item.id)}
+                        className="p-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 transition"
+                        title="Excluir Botão"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Form fields for button */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div>
+                      <label className="text-[10px] text-gray-400 uppercase font-semibold block mb-1">
+                        Estilo / Tipo do Botão
+                      </label>
+                      <select
+                        value={item.type}
+                        onChange={(e) => updateLinkItem(item.id, 'type', e.target.value)}
+                        className="w-full bg-dark-900 border border-white/15 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-purple-400"
+                      >
+                        {BUTTON_TYPE_OPTIONS.map((opt) => (
+                          <option key={opt.value} value={opt.value} className="bg-dark-900 text-white">
+                            {opt.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="text-[10px] text-gray-400 uppercase font-semibold block mb-1">
+                        Título do Botão
+                      </label>
+                      <input
+                        type="text"
+                        value={item.title}
+                        onChange={(e) => updateLinkItem(item.id, 'title', e.target.value)}
+                        placeholder="Ex: Agendar Chamada"
+                        className="w-full bg-dark-900 border border-white/15 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-purple-400"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-[10px] text-gray-400 uppercase font-semibold block mb-1">
+                        Subtítulo / Descrição Curta
+                      </label>
+                      <input
+                        type="text"
+                        value={item.subtitle || ''}
+                        onChange={(e) => updateLinkItem(item.id, 'subtitle', e.target.value)}
+                        placeholder="Ex: Sessão 1-on-1 exclusiva"
+                        className="w-full bg-dark-900 border border-white/15 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-purple-400"
+                      />
+                    </div>
+
+                    <div className="md:col-span-2">
+                      <label className="text-[10px] text-gray-400 uppercase font-semibold block mb-1">
+                        URL do Link de Destino
+                      </label>
+                      <input
+                        type="text"
+                        value={item.url}
+                        onChange={(e) => updateLinkItem(item.id, 'url', e.target.value)}
+                        placeholder="https://..."
+                        className="w-full bg-dark-900 border border-white/15 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-purple-400 font-mono"
+                      />
+                    </div>
+
+                    {item.type !== 'no-photo' && (
+                      <div>
+                        <label className="text-[10px] text-gray-400 uppercase font-semibold block mb-1">
+                          URL da Imagem / Foto
+                        </label>
+                        <input
+                          type="text"
+                          value={item.image || ''}
+                          onChange={(e) => updateLinkItem(item.id, 'image', e.target.value)}
+                          placeholder="https://..."
+                          className="w-full bg-dark-900 border border-white/15 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-purple-400 font-mono"
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="pt-4 border-t border-white/10 flex justify-end">
+              <button
+                onClick={() => handleSaveLinks()}
+                disabled={savingLinks}
+                className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-brand-pink text-white font-bold text-xs hover:opacity-90 flex items-center gap-2 shadow-lg transition disabled:opacity-50"
+              >
+                {savingLinks ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                <span>Salvar Todos os Botões</span>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* TAB 5: REORDER BUTTONS & CARDS */}
+        {activeTab === 'reorder' && (
+          <div className="glass-card rounded-2xl p-6 border border-white/10 space-y-6">
+            <div className="flex items-center justify-between pb-4 border-b border-white/10">
+              <div>
+                <h3 className="text-base font-bold text-white flex items-center gap-2">
+                  <ArrowUpDown className="w-5 h-5 text-amber-400" />
+                  <span>Reordenar Ordem dos Botões</span>
+                </h3>
+                <p className="text-xs text-gray-400 mt-1">
+                  Mova os botões para cima ou para baixo para alterar exatamente a sequência em que aparecem no seu perfil.
+                </p>
+              </div>
+
+              <button
+                onClick={() => handleSaveLinks()}
+                disabled={savingLinks}
+                className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-brand-pink text-white font-bold text-xs hover:opacity-90 flex items-center gap-2 shadow-lg transition disabled:opacity-50"
+              >
+                {savingLinks ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                <span>Salvar Nova Ordem</span>
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              {linksList.map((item, idx) => (
+                <div
+                  key={item.id}
+                  className={`p-4 rounded-2xl border transition flex items-center justify-between gap-4 ${
+                    item.active
+                      ? 'bg-white/5 border-white/15 shadow-md'
                       : 'bg-black/40 border-white/5 opacity-50'
                   }`}
                 >
-                  <div className="flex items-center gap-4">
-                    {item.image ? (
-                      <div className="w-16 h-12 rounded-lg relative overflow-hidden bg-dark-700 shrink-0 border border-white/10">
-                        <Image src={item.image} alt={item.title} fill className="object-cover" />
+                  <div className="flex items-center gap-4 min-w-0">
+                    <span className="w-8 h-8 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 font-bold text-xs flex items-center justify-center shrink-0">
+                      #{idx + 1}
+                    </span>
+
+                    {item.image && item.image.trim() !== '' && (item.type === 'left-thumb' || item.type === 'card-photo' || item.type === 'hero-card') ? (
+                      <div className="w-12 h-12 rounded-xl overflow-hidden relative shrink-0 border border-white/10 bg-dark-800">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={item.image}
+                          alt={item.title}
+                          className="absolute inset-0 w-full h-full object-cover"
+                          onError={(e) => {
+                            (e.currentTarget as HTMLElement).style.display = 'none';
+                          }}
+                        />
                       </div>
                     ) : (
-                      <div className="w-12 h-12 rounded-lg bg-brand-purple/20 border border-brand-purple/30 flex items-center justify-center shrink-0 text-brand-purple">
+                      <div className="w-12 h-12 rounded-xl bg-dark-800 border border-white/10 flex items-center justify-center shrink-0 text-gray-400">
                         <Layers className="w-5 h-5" />
                       </div>
                     )}
 
-                    <div>
+                    <div className="truncate">
                       <div className="flex items-center gap-2">
-                        <span className="font-bold text-sm text-white">{item.title}</span>
-                        {item.badge && (
-                          <span className="bg-brand-pink/20 text-brand-pink text-[10px] font-bold px-2 py-0.5 rounded-full border border-brand-pink/30">
-                            {item.badge}
-                          </span>
-                        )}
+                        <h4 className="font-bold text-sm text-white truncate">{item.title}</h4>
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/10 text-gray-300 font-medium shrink-0">
+                          {item.type === 'cta-primary' ? 'VIP' : item.type === 'left-thumb' ? 'Miniatura' : item.type === 'card-photo' ? 'Card Foto' : 'Sem Foto'}
+                        </span>
                       </div>
-                      <p className="text-xs text-gray-400 mt-0.5">{item.subtitle || item.url}</p>
-                      <div className="text-[10px] text-gray-500 mt-1 uppercase font-semibold">
-                        Tipo: {item.type} • Categoria: {item.category}
-                      </div>
+                      <p className="text-xs text-gray-400 truncate mt-0.5">{item.subtitle || item.url}</p>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-3 self-end sm:self-auto">
+                  <div className="flex items-center gap-2 shrink-0">
                     <button
-                      onClick={() => toggleLinkActive(item.id)}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition border ${
-                        item.active
-                          ? 'bg-green-500/20 text-green-300 border-green-500/40 hover:bg-green-500/30'
-                          : 'bg-gray-800 text-gray-400 border-gray-700 hover:bg-gray-700'
-                      }`}
+                      onClick={() => moveLinkItem(idx, 'up')}
+                      disabled={idx === 0}
+                      className="p-2 rounded-xl bg-white/5 hover:bg-white/15 border border-white/10 text-gray-300 disabled:opacity-20 transition"
+                      title="Mover para cima"
                     >
-                      {item.active ? 'Ativo na Página' : 'Oculto'}
+                      <ArrowUp className="w-4 h-4" />
+                    </button>
+
+                    <button
+                      onClick={() => moveLinkItem(idx, 'down')}
+                      disabled={idx === linksList.length - 1}
+                      className="p-2 rounded-xl bg-white/5 hover:bg-white/15 border border-white/10 text-gray-300 disabled:opacity-20 transition"
+                      title="Mover para baixo"
+                    >
+                      <ArrowDown className="w-4 h-4" />
                     </button>
                   </div>
                 </div>
               ))}
+            </div>
+
+            <div className="pt-4 border-t border-white/10 flex justify-end">
+              <button
+                onClick={() => handleSaveLinks()}
+                disabled={savingLinks}
+                className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-brand-pink text-white font-bold text-xs hover:opacity-90 flex items-center gap-2 shadow-lg transition disabled:opacity-50"
+              >
+                {savingLinks ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                <span>Salvar Nova Ordem</span>
+              </button>
             </div>
           </div>
         )}
