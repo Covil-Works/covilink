@@ -3,27 +3,15 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
-  CheckCircle2,
   ExternalLink,
   Mail,
   Calendar,
   Sparkles,
   BarChart3,
-  Instagram,
-  Twitter,
-  Youtube,
-  Linkedin,
-  Music,
-  Video,
-  Github,
-  Facebook,
-  Tv,
-  AtSign,
-  Globe,
-  MessageCircle,
   Check
 } from 'lucide-react';
 import { ProfileConfig, SocialLink, LinkItem, INITIAL_PROFILE } from '@/lib/links-config';
+import { SocialIcon } from '@/components/SocialIcons';
 
 interface LinkPortalProps {
   profile?: ProfileConfig;
@@ -99,39 +87,6 @@ export default function LinkPortal({ profile, socials, links }: LinkPortalProps)
     setTimeout(() => setCopiedEmail(false), 2000);
   };
 
-  const getSocialIcon = (platform: string) => {
-    const p = (platform || '').toLowerCase().trim();
-    switch (p) {
-      case 'instagram':
-        return <Instagram className="w-5 h-5 text-pink-400" />;
-      case 'twitter':
-      case 'x':
-        return <Twitter className="w-5 h-5 text-sky-400" />;
-      case 'youtube':
-        return <Youtube className="w-5 h-5 text-red-500" />;
-      case 'linkedin':
-        return <Linkedin className="w-5 h-5 text-blue-500" />;
-      case 'spotify':
-        return <Music className="w-5 h-5 text-emerald-400" />;
-      case 'tiktok':
-        return <Video className="w-5 h-5 text-purple-400" />;
-      case 'github':
-        return <Github className="w-5 h-5 text-gray-200" />;
-      case 'facebook':
-        return <Facebook className="w-5 h-5 text-blue-600" />;
-      case 'whatsapp':
-        return <MessageCircle className="w-5 h-5 text-green-400" />;
-      case 'twitch':
-        return <Tv className="w-5 h-5 text-purple-400" />;
-      case 'threads':
-        return <AtSign className="w-5 h-5 text-gray-300" />;
-      case 'website':
-        return <Globe className="w-5 h-5 text-cyan-400" />;
-      default:
-        return <ExternalLink className="w-5 h-5 text-gray-300" />;
-    }
-  };
-
   const safeSocials = Array.isArray(socials) ? socials : [];
   const activeSocials = safeSocials.filter((s) => s && typeof s === 'object' && s.active !== false);
 
@@ -198,7 +153,15 @@ export default function LinkPortal({ profile, socials, links }: LinkPortalProps)
           <div className="flex items-center justify-center gap-1.5 mb-0.5">
             <h1 className="text-2xl font-bold tracking-tight text-white">{safeProfile.name}</h1>
             {safeProfile.isVerified && (
-              <CheckCircle2 className="w-5 h-5 text-blue-400 fill-blue-400/20 shrink-0" />
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img
+                src="/images/verify.webp"
+                alt="Selo Verificado"
+                className="w-5 h-5 object-contain shrink-0 select-none inline-block drop-shadow-sm"
+                onError={(e) => {
+                  (e.currentTarget as HTMLElement).style.display = 'none';
+                }}
+              />
             )}
           </div>
           
@@ -219,7 +182,7 @@ export default function LinkPortal({ profile, socials, links }: LinkPortalProps)
                   className="w-10 h-10 rounded-full bg-white/5 border border-white/10 hover:border-white/30 flex items-center justify-center hover:scale-110 active:scale-95 transition-all shadow-md backdrop-blur-md group"
                   title={s.title}
                 >
-                  {getSocialIcon(s.platform)}
+                  <SocialIcon platform={s.platform} className="w-5 h-5 transition-transform duration-200 group-hover:scale-110" />
                 </a>
               ))}
             </div>

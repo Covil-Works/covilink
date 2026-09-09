@@ -1,1 +1,30 @@
-[]
+[
+  {
+    "id": "soc-1",
+    "platform": "instagram",
+    "title": "Instagram",
+    "url": "https://instagram.com/kourtneyreppert",
+    "active": true
+  },
+  {
+    "id": "soc-2",
+    "platform": "twitter",
+    "title": "X (Twitter)",
+    "url": "https://x.com/kourtneyreppert",
+    "active": true
+  },
+  {
+    "id": "soc-4",
+    "platform": "tiktok",
+    "title": "TikTok",
+    "url": "https://tiktok.com/@kourtneyreppert",
+    "active": true
+  },
+  {
+    "id": "soc-1788966751858",
+    "platform": "telegram",
+    "title": "Telegram",
+    "url": "https://t.me/seu_usuario",
+    "active": true
+  }
+]

@@ -14,7 +14,26 @@ export interface LinkItem {
 
 export interface SocialLink {
   id: string;
-  platform: 'instagram' | 'youtube' | 'twitter' | 'linkedin' | 'spotify' | 'tiktok' | 'github' | 'facebook' | 'whatsapp' | 'twitch' | 'threads' | 'website' | 'other';
+  platform:
+    | 'instagram'
+    | 'youtube'
+    | 'twitter'
+    | 'tiktok'
+    | 'whatsapp'
+    | 'linkedin'
+    | 'spotify'
+    | 'github'
+    | 'facebook'
+    | 'twitch'
+    | 'threads'
+    | 'discord'
+    | 'telegram'
+    | 'pinterest'
+    | 'snapchat'
+    | 'bluesky'
+    | 'website'
+    | 'other'
+    | string;
   title: string;
   url: string;
   icon?: string;
@@ -54,9 +73,11 @@ export const INITIAL_SOCIALS: SocialLink[] = [
   { id: 'soc-1', platform: 'instagram', title: 'Instagram', url: 'https://instagram.com/kourtneyreppert', active: true },
   { id: 'soc-2', platform: 'twitter', title: 'X (Twitter)', url: 'https://x.com/kourtneyreppert', active: true },
   { id: 'soc-3', platform: 'youtube', title: 'YouTube', url: 'https://youtube.com/@kourtneyreppert', active: true },
-  { id: 'soc-4', platform: 'linkedin', title: 'LinkedIn', url: 'https://linkedin.com/in/kourtneyreppert', active: true },
-  { id: 'soc-5', platform: 'spotify', title: 'Spotify', url: 'https://open.spotify.com', active: true },
-  { id: 'soc-6', platform: 'tiktok', title: 'TikTok', url: 'https://tiktok.com/@kourtneyreppert', active: true },
+  { id: 'soc-4', platform: 'tiktok', title: 'TikTok', url: 'https://tiktok.com/@kourtneyreppert', active: true },
+  { id: 'soc-5', platform: 'whatsapp', title: 'WhatsApp', url: 'https://wa.me/5511999999999', active: true },
+  { id: 'soc-6', platform: 'linkedin', title: 'LinkedIn', url: 'https://linkedin.com/in/kourtneyreppert', active: true },
+  { id: 'soc-7', platform: 'spotify', title: 'Spotify', url: 'https://open.spotify.com', active: true },
+  { id: 'soc-8', platform: 'github', title: 'GitHub', url: 'https://github.com', active: true },
 ];
 
 export const INITIAL_LINKS: LinkItem[] = [

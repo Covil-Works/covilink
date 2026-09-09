@@ -27,17 +27,6 @@ import {
   Save,
   ArrowUp,
   ArrowDown,
-  Instagram,
-  Twitter,
-  Youtube,
-  Linkedin,
-  Music,
-  Video,
-  Github,
-  Facebook,
-  Tv,
-  AtSign,
-  MessageCircle,
   ExternalLink,
   FileCode,
   Check,
@@ -49,6 +38,7 @@ import {
 } from 'lucide-react';
 import { AnalyticsSummary } from '@/lib/analytics';
 import { INITIAL_LINKS, LinkItem, SocialLink, INITIAL_PROFILE, ProfileConfig } from '@/lib/links-config';
+import { SocialIcon } from '@/components/SocialIcons';
 
 type TabType = 'metrics' | 'profile' | 'socials' | 'buttons' | 'reorder';
 
@@ -56,14 +46,19 @@ const PLATFORM_OPTIONS: { label: string; value: SocialLink['platform'] }[] = [
   { label: 'Instagram', value: 'instagram' },
   { label: 'YouTube', value: 'youtube' },
   { label: 'X (Twitter)', value: 'twitter' },
-  { label: 'LinkedIn', value: 'linkedin' },
-  { label: 'Spotify', value: 'spotify' },
   { label: 'TikTok', value: 'tiktok' },
   { label: 'WhatsApp', value: 'whatsapp' },
+  { label: 'LinkedIn', value: 'linkedin' },
+  { label: 'Spotify', value: 'spotify' },
   { label: 'GitHub', value: 'github' },
   { label: 'Facebook', value: 'facebook' },
   { label: 'Twitch', value: 'twitch' },
   { label: 'Threads', value: 'threads' },
+  { label: 'Discord', value: 'discord' },
+  { label: 'Telegram', value: 'telegram' },
+  { label: 'Pinterest', value: 'pinterest' },
+  { label: 'Snapchat', value: 'snapchat' },
+  { label: 'Bluesky', value: 'bluesky' },
   { label: 'Website / Link', value: 'website' },
   { label: 'Outro', value: 'other' },
 ];
@@ -255,14 +250,19 @@ export default function AdminDashboard() {
       instagram: 'Instagram',
       youtube: 'YouTube',
       twitter: 'X (Twitter)',
-      linkedin: 'LinkedIn',
-      spotify: 'Spotify',
       tiktok: 'TikTok',
       whatsapp: 'WhatsApp',
+      linkedin: 'LinkedIn',
+      spotify: 'Spotify',
       github: 'GitHub',
       facebook: 'Facebook',
       twitch: 'Twitch',
       threads: 'Threads',
+      discord: 'Discord',
+      telegram: 'Telegram',
+      pinterest: 'Pinterest',
+      snapchat: 'Snapchat',
+      bluesky: 'Bluesky',
       website: 'Website Oficial',
       other: 'Nova Rede',
     };
@@ -270,14 +270,19 @@ export default function AdminDashboard() {
       instagram: 'https://instagram.com/seu_usuario',
       youtube: 'https://youtube.com/@seu_canal',
       twitter: 'https://x.com/seu_usuario',
-      linkedin: 'https://linkedin.com/in/seu_perfil',
-      spotify: 'https://open.spotify.com/user/seu_id',
       tiktok: 'https://tiktok.com/@seu_usuario',
       whatsapp: 'https://wa.me/5511999999999',
+      linkedin: 'https://linkedin.com/in/seu_perfil',
+      spotify: 'https://open.spotify.com/user/seu_id',
       github: 'https://github.com/seu_usuario',
       facebook: 'https://facebook.com/sua_pagina',
       twitch: 'https://twitch.tv/seu_canal',
       threads: 'https://threads.net/@seu_usuario',
+      discord: 'https://discord.gg/seu_servidor',
+      telegram: 'https://t.me/seu_usuario',
+      pinterest: 'https://pinterest.com/seu_usuario',
+      snapchat: 'https://snapchat.com/add/seu_usuario',
+      bluesky: 'https://bsky.app/profile/seu_usuario.bsky.social',
       website: 'https://seuwebsite.com',
       other: 'https://link.com',
     };
@@ -398,34 +403,7 @@ export default function AdminDashboard() {
   };
 
   const getSocialIconComponent = (platform: string) => {
-    switch (platform) {
-      case 'instagram':
-        return <Instagram className="w-5 h-5 text-pink-400" />;
-      case 'twitter':
-        return <Twitter className="w-5 h-5 text-sky-400" />;
-      case 'youtube':
-        return <Youtube className="w-5 h-5 text-red-500" />;
-      case 'linkedin':
-        return <Linkedin className="w-5 h-5 text-blue-500" />;
-      case 'spotify':
-        return <Music className="w-5 h-5 text-emerald-400" />;
-      case 'tiktok':
-        return <Video className="w-5 h-5 text-purple-400" />;
-      case 'github':
-        return <Github className="w-5 h-5 text-gray-200" />;
-      case 'facebook':
-        return <Facebook className="w-5 h-5 text-blue-600" />;
-      case 'whatsapp':
-        return <MessageCircle className="w-5 h-5 text-green-400" />;
-      case 'twitch':
-        return <Tv className="w-5 h-5 text-purple-400" />;
-      case 'threads':
-        return <AtSign className="w-5 h-5 text-gray-300" />;
-      case 'website':
-        return <Globe className="w-5 h-5 text-cyan-400" />;
-      default:
-        return <ExternalLink className="w-5 h-5 text-gray-300" />;
-    }
+    return <SocialIcon platform={platform} className="w-5 h-5" />;
   };
 
   return (
@@ -987,7 +965,20 @@ export default function AdminDashboard() {
                 />
               </div>
               <div className="text-center mt-2">
-                <h4 className="font-bold text-white text-base">{profile.name || 'Nome'}</h4>
+                <div className="flex items-center justify-center gap-1.5">
+                  <h4 className="font-bold text-white text-base">{profile.name || 'Nome'}</h4>
+                  {profile.isVerified && (
+                    /* eslint-disable-next-line @next/next/no-img-element */
+                    <img
+                      src="/images/verify.webp"
+                      alt="Verificado"
+                      className="w-4 h-4 object-contain shrink-0 drop-shadow-sm select-none"
+                      onError={(e) => {
+                        (e.currentTarget as HTMLElement).style.display = 'none';
+                      }}
+                    />
+                  )}
+                </div>
                 {profile.showHandle !== false && (
                   <p className="text-xs text-gray-400 font-medium">{profile.handle || '@handle'}</p>
                 )}
@@ -1000,7 +991,27 @@ export default function AdminDashboard() {
             {/* Profile Form Fields */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="text-xs font-bold text-gray-300 block mb-1">Nome Exibido</label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-xs font-bold text-gray-300">Nome Exibido</label>
+                  <button
+                    type="button"
+                    onClick={() => setProfile({ ...profile, isVerified: !profile.isVerified })}
+                    className={`px-2 py-0.5 rounded-full text-[10px] font-bold flex items-center gap-1.5 transition border ${
+                      profile.isVerified
+                        ? 'bg-blue-500/20 text-blue-300 border-blue-500/40 hover:bg-blue-500/30'
+                        : 'bg-gray-800 text-gray-400 border-gray-700 hover:bg-gray-700'
+                    }`}
+                    title={profile.isVerified ? 'Clique para ocultar o selo verificado' : 'Clique para exibir o selo verificado'}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src="/images/verify.webp"
+                      alt="Selo Verificado"
+                      className="w-3 h-3 object-contain shrink-0"
+                    />
+                    <span>{profile.isVerified ? 'Selo Verificado Ativo' : 'Sem Verificado'}</span>
+                  </button>
+                </div>
                 <input
                   type="text"
                   value={profile.name}
@@ -1199,21 +1210,25 @@ export default function AdminDashboard() {
               <p className="text-xs font-semibold text-gray-400">Atalhos para Adicionar Rápido:</p>
               <div className="flex flex-wrap gap-2">
                 {[
-                  { platform: 'whatsapp', name: '+ WhatsApp', icon: <MessageCircle className="w-3.5 h-3.5 text-green-400" /> },
-                  { platform: 'instagram', name: '+ Instagram', icon: <Instagram className="w-3.5 h-3.5 text-pink-400" /> },
-                  { platform: 'youtube', name: '+ YouTube', icon: <Youtube className="w-3.5 h-3.5 text-red-500" /> },
-                  { platform: 'tiktok', name: '+ TikTok', icon: <Video className="w-3.5 h-3.5 text-purple-400" /> },
-                  { platform: 'twitter', name: '+ X (Twitter)', icon: <Twitter className="w-3.5 h-3.5 text-sky-400" /> },
-                  { platform: 'linkedin', name: '+ LinkedIn', icon: <Linkedin className="w-3.5 h-3.5 text-blue-500" /> },
-                  { platform: 'github', name: '+ GitHub', icon: <Github className="w-3.5 h-3.5 text-gray-200" /> },
-                  { platform: 'website', name: '+ Meu Site', icon: <Globe className="w-3.5 h-3.5 text-cyan-400" /> },
+                  { platform: 'instagram', name: '+ Instagram' },
+                  { platform: 'youtube', name: '+ YouTube' },
+                  { platform: 'tiktok', name: '+ TikTok' },
+                  { platform: 'whatsapp', name: '+ WhatsApp' },
+                  { platform: 'twitter', name: '+ X (Twitter)' },
+                  { platform: 'spotify', name: '+ Spotify' },
+                  { platform: 'linkedin', name: '+ LinkedIn' },
+                  { platform: 'github', name: '+ GitHub' },
+                  { platform: 'threads', name: '+ Threads' },
+                  { platform: 'discord', name: '+ Discord' },
+                  { platform: 'telegram', name: '+ Telegram' },
+                  { platform: 'website', name: '+ Meu Site' },
                 ].map((item) => (
                   <button
                     key={item.platform}
                     onClick={() => addSocialItem(item.platform as SocialLink['platform'])}
                     className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-medium text-gray-300 hover:text-white flex items-center gap-1.5 transition"
                   >
-                    {item.icon}
+                    <SocialIcon platform={item.platform} className="w-3.5 h-3.5 shrink-0" />
                     <span>{item.name}</span>
                   </button>
                 ))}
