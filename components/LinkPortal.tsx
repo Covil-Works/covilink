@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import Link from 'next/link';
 import { motion } from 'framer-motion';
 import {
   CheckCircle2,
@@ -39,12 +38,15 @@ export default function LinkPortal({ profile, socials, links }: LinkPortalProps)
   const safeProfile: ProfileConfig = {
     name: profile?.name || INITIAL_PROFILE.name,
     handle: profile?.handle || INITIAL_PROFILE.handle,
+    showHandle: profile?.showHandle !== false,
     isVerified: profile?.isVerified !== false,
     followersCount: profile?.followersCount || INITIAL_PROFILE.followersCount,
     bio: profile?.bio || INITIAL_PROFILE.bio,
+    showBio: profile?.showBio !== false,
     avatarUrl: profile?.avatarUrl || INITIAL_PROFILE.avatarUrl,
     coverImageUrl: profile?.coverImageUrl || '',
     contactEmail: profile?.contactEmail || INITIAL_PROFILE.contactEmail,
+    showContactEmail: profile?.showContactEmail !== false,
   };
 
   const [avatarSrc, setAvatarSrc] = useState(safeProfile.avatarUrl || INITIAL_PROFILE.avatarUrl);
@@ -137,13 +139,13 @@ export default function LinkPortal({ profile, socials, links }: LinkPortalProps)
   const activeLinks = safeLinks.filter((l) => l && typeof l === 'object' && l.active !== false);
 
   return (
-    <div className="min-h-screen bg-[#08090d] text-white flex flex-col items-center pb-16 relative selection:bg-brand-pink/30">
+    <div className="min-h-screen w-full max-w-full overflow-x-hidden bg-[#08090d] text-white flex flex-col items-center pb-16 relative selection:bg-brand-pink/30">
       
       {/* Background Decorative Glow */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
-        <div className="absolute -top-40 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-gradient-to-b from-purple-900/20 via-pink-900/15 to-transparent rounded-full blur-3xl opacity-70" />
-        <div className="absolute top-96 -left-32 w-[350px] h-[350px] bg-brand-pink/10 rounded-full blur-3xl" />
-        <div className="absolute bottom-32 -right-32 w-[350px] h-[350px] bg-brand-purple/10 rounded-full blur-3xl" />
+      <div className="fixed inset-0 pointer-events-none overflow-hidden z-0 w-full max-w-full">
+        <div className="absolute -top-40 left-1/2 -translate-x-1/2 w-[500px] max-w-[100vw] h-[500px] bg-gradient-to-b from-purple-900/20 via-pink-900/15 to-transparent rounded-full blur-3xl opacity-70" />
+        <div className="absolute top-96 left-0 w-[240px] h-[240px] bg-brand-pink/10 rounded-full blur-3xl -translate-x-1/2" />
+        <div className="absolute bottom-32 right-0 w-[240px] h-[240px] bg-brand-purple/10 rounded-full blur-3xl translate-x-1/2" />
       </div>
 
       {/* Real-time Click Metric Toast */}
@@ -160,7 +162,7 @@ export default function LinkPortal({ profile, socials, links }: LinkPortalProps)
       )}
 
       {/* Main Container - Mobile First Centered Column */}
-      <main className="w-full max-w-md px-4 pt-6 z-10 flex flex-col items-center">
+      <main className="w-full max-w-md px-4 pt-6 z-10 flex flex-col items-center overflow-x-hidden">
         
         {/* Cover Header Banner */}
         <div className="w-full h-40 sm:h-44 rounded-2xl overflow-hidden relative border border-white/10 shadow-2xl mb-[-48px] bg-dark-800 shrink-0">
@@ -176,15 +178,6 @@ export default function LinkPortal({ profile, socials, links }: LinkPortalProps)
             <div className="absolute inset-0 bg-gradient-to-br from-purple-950/60 via-dark-800 to-pink-950/40" />
           )}
           <div className="absolute inset-0 bg-gradient-to-t from-[#08090d] via-transparent to-black/30 pointer-events-none" />
-          
-          {/* Top Admin Quick Switcher */}
-          <Link
-            href="/admin"
-            className="absolute top-3 right-3 bg-black/60 hover:bg-black/80 border border-white/20 text-white/90 hover:text-white px-3 py-1 rounded-full text-xs font-medium backdrop-blur-md transition flex items-center gap-1.5 shadow-lg group z-20"
-          >
-            <BarChart3 className="w-3.5 h-3.5 text-brand-cyan group-hover:rotate-12 transition-transform" />
-            <span>Painel Admin</span>
-          </Link>
         </div>
 
         {/* Profile Avatar (Strictly sized, never stretches) */}
@@ -209,7 +202,9 @@ export default function LinkPortal({ profile, socials, links }: LinkPortalProps)
             )}
           </div>
           
-          <p className="text-sm text-gray-400 font-medium mb-2">{safeProfile.handle}</p>
+          {safeProfile.showHandle && safeProfile.handle && (
+            <p className="text-sm text-gray-400 font-medium mb-2">{safeProfile.handle}</p>
+          )}
 
           {/* Social Icons Bar */}
           {activeSocials.length > 0 && (
@@ -230,7 +225,7 @@ export default function LinkPortal({ profile, socials, links }: LinkPortalProps)
             </div>
           )}
 
-          {safeProfile.bio && (
+          {safeProfile.showBio && safeProfile.bio && (
             <p className="text-xs text-gray-300 max-w-xs leading-relaxed mt-1 text-center font-normal">{safeProfile.bio}</p>
           )}
         </div>
@@ -429,7 +424,7 @@ export default function LinkPortal({ profile, socials, links }: LinkPortalProps)
         </div>
 
         {/* Contact Email Block */}
-        {safeProfile.contactEmail && (
+        {safeProfile.showContactEmail && safeProfile.contactEmail && (
           <div className="w-full mb-6">
             <button
               onClick={() => copyEmailToClipboard(safeProfile.contactEmail)}
@@ -450,15 +445,11 @@ export default function LinkPortal({ profile, socials, links }: LinkPortalProps)
           </div>
         )}
 
-        {/* Footer info & Admin Button */}
-        <footer className="text-center pt-2 pb-6 border-t border-white/5 w-full flex flex-col items-center gap-2">
-          <div className="flex items-center justify-center gap-4 text-[11px] text-gray-500 font-medium">
-            <span>Covilink Analytics</span>
-            <span>•</span>
-            <Link href="/admin" className="hover:text-brand-pink underline transition">
-              Acessar Painel de Métricas
-            </Link>
-          </div>
+        {/* Footer info */}
+        <footer className="text-center pt-4 pb-6 border-t border-white/5 w-full flex flex-col items-center gap-1">
+          <p className="text-[11px] text-gray-500 font-medium">
+            covilink
+          </p>
         </footer>
 
       </main>

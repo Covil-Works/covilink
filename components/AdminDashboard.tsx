@@ -14,6 +14,7 @@ import {
   Database,
   RefreshCw,
   Eye,
+  EyeOff,
   CheckCircle2,
   ArrowLeft,
   Layers,
@@ -987,8 +988,12 @@ export default function AdminDashboard() {
               </div>
               <div className="text-center mt-2">
                 <h4 className="font-bold text-white text-base">{profile.name || 'Nome'}</h4>
-                <p className="text-xs text-gray-400 font-medium">{profile.handle || '@handle'}</p>
-                {profile.bio && <p className="text-xs text-gray-300 mt-1 max-w-xs">{profile.bio}</p>}
+                {profile.showHandle !== false && (
+                  <p className="text-xs text-gray-400 font-medium">{profile.handle || '@handle'}</p>
+                )}
+                {profile.showBio !== false && profile.bio && (
+                  <p className="text-xs text-gray-300 mt-1 max-w-xs">{profile.bio}</p>
+                )}
               </div>
             </div>
 
@@ -1006,7 +1011,31 @@ export default function AdminDashboard() {
               </div>
 
               <div>
-                <label className="text-xs font-bold text-gray-300 block mb-1">Arroba / Handle (@)</label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-xs font-bold text-gray-300">Arroba / Handle (@)</label>
+                  <button
+                    type="button"
+                    onClick={() => setProfile({ ...profile, showHandle: profile.showHandle === false ? true : false })}
+                    className={`px-2 py-0.5 rounded-full text-[10px] font-bold flex items-center gap-1 transition border ${
+                      profile.showHandle !== false
+                        ? 'bg-green-500/20 text-green-300 border-green-500/40 hover:bg-green-500/30'
+                        : 'bg-gray-800 text-gray-400 border-gray-700 hover:bg-gray-700'
+                    }`}
+                    title={profile.showHandle !== false ? 'Clique para ocultar da página' : 'Clique para exibir na página'}
+                  >
+                    {profile.showHandle !== false ? (
+                      <>
+                        <Eye className="w-3 h-3 text-green-400" />
+                        <span>Visível</span>
+                      </>
+                    ) : (
+                      <>
+                        <EyeOff className="w-3 h-3 text-gray-400" />
+                        <span>Oculto</span>
+                      </>
+                    )}
+                  </button>
+                </div>
                 <input
                   type="text"
                   value={profile.handle}
@@ -1017,7 +1046,31 @@ export default function AdminDashboard() {
               </div>
 
               <div className="md:col-span-2">
-                <label className="text-xs font-bold text-gray-300 block mb-1">E-mail Profissional de Contato</label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-xs font-bold text-gray-300">E-mail Profissional de Contato</label>
+                  <button
+                    type="button"
+                    onClick={() => setProfile({ ...profile, showContactEmail: profile.showContactEmail === false ? true : false })}
+                    className={`px-2 py-0.5 rounded-full text-[10px] font-bold flex items-center gap-1 transition border ${
+                      profile.showContactEmail !== false
+                        ? 'bg-green-500/20 text-green-300 border-green-500/40 hover:bg-green-500/30'
+                        : 'bg-gray-800 text-gray-400 border-gray-700 hover:bg-gray-700'
+                    }`}
+                    title={profile.showContactEmail !== false ? 'Clique para ocultar da página' : 'Clique para exibir na página'}
+                  >
+                    {profile.showContactEmail !== false ? (
+                      <>
+                        <Eye className="w-3 h-3 text-green-400" />
+                        <span>Visível</span>
+                      </>
+                    ) : (
+                      <>
+                        <EyeOff className="w-3 h-3 text-gray-400" />
+                        <span>Oculto</span>
+                      </>
+                    )}
+                  </button>
+                </div>
                 <input
                   type="email"
                   value={profile.contactEmail}
@@ -1028,7 +1081,31 @@ export default function AdminDashboard() {
               </div>
 
               <div className="md:col-span-2">
-                <label className="text-xs font-bold text-gray-300 block mb-1">Bio / Descrição do Perfil</label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-xs font-bold text-gray-300">Bio / Descrição do Perfil</label>
+                  <button
+                    type="button"
+                    onClick={() => setProfile({ ...profile, showBio: profile.showBio === false ? true : false })}
+                    className={`px-2 py-0.5 rounded-full text-[10px] font-bold flex items-center gap-1 transition border ${
+                      profile.showBio !== false
+                        ? 'bg-green-500/20 text-green-300 border-green-500/40 hover:bg-green-500/30'
+                        : 'bg-gray-800 text-gray-400 border-gray-700 hover:bg-gray-700'
+                    }`}
+                    title={profile.showBio !== false ? 'Clique para ocultar da página' : 'Clique para exibir na página'}
+                  >
+                    {profile.showBio !== false ? (
+                      <>
+                        <Eye className="w-3 h-3 text-green-400" />
+                        <span>Visível</span>
+                      </>
+                    ) : (
+                      <>
+                        <EyeOff className="w-3 h-3 text-gray-400" />
+                        <span>Oculto</span>
+                      </>
+                    )}
+                  </button>
+                </div>
                 <textarea
                   rows={2}
                   value={profile.bio}

@@ -8,10 +8,17 @@
     --foreground: 255 255 255;
   }
   
+  *, *::before, *::after {
+    box-sizing: border-box;
+  }
+
   html {
     background-color: #08090d;
     color: #f3f4f6;
     color-scheme: dark;
+    overflow-x: hidden;
+    max-width: 100vw;
+    width: 100%;
   }
 
   body {
@@ -19,7 +26,11 @@
     color: #f3f4f6;
     font-family: var(--font-inter), system-ui, -apple-system, sans-serif;
     overflow-x: hidden;
+    max-width: 100vw;
+    width: 100%;
     min-height: 100vh;
+    position: relative;
+    -webkit-text-size-adjust: 100%;
   }
 
   /* Universal Image Constraints - Prevents Images from blowing up across viewport */

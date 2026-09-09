@@ -11,6 +11,7 @@ export const viewport: Viewport = {
   themeColor: '#08090d',
   width: 'device-width',
   initialScale: 1,
+  maximumScale: 5,
 };
 
 export const metadata: Metadata = {
@@ -24,8 +25,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="pt-BR" className={`${inter.variable} dark bg-[#08090d]`}>
-      <body className="antialiased bg-[#08090d] text-gray-100 min-h-screen selection:bg-brand-pink/30 selection:text-white">
+    <html lang="pt-BR" className={`${inter.variable} dark bg-[#08090d] overflow-x-hidden w-full max-w-full`}>
+      <body className="antialiased bg-[#08090d] text-gray-100 min-h-screen selection:bg-brand-pink/30 selection:text-white overflow-x-hidden w-full max-w-full">
         {children}
       </body>
     </html>

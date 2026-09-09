@@ -70,9 +70,27 @@ O bug em que a foto de perfil ocupa a tela inteira ocorre quando a imagem do ava
 
 ---
 
-## 3. Integridade do Painel Administrativo (`/admin`)
+## 3. Encaixe Mobile Perfeito e Bloqueio de Rolagem Lateral (Anti-Horizontal Scroll)
+
+A página DEVE se encaixar perfeitamente na largura da tela de qualquer celular sem permitir qualquer rolagem lateral (scroll horizontal).
+
+### Regras Obrigatórias:
+1. **Bloqueio de Overflow Horizontal Global**:
+   - `html` e `body` DEVEM possuir `overflow-x: hidden; width: 100%; max-width: 100vw;`.
+   - `box-sizing: border-box` ativo globalmente em todos os elementos (`*, *::before, *::after`).
+2. **Contenção de Efeitos de Luz de Fundo (Background Glows)**:
+   - Todo brilho/aura decorativa em `position: absolute` ou `fixed` DEVE estar contido em um wrapper com `overflow-hidden w-full max-w-full pointer-events-none`.
+   - Nunca usar coordenadas negativas ou larguras em pixels que ultrapassem a viewport sem `overflow: hidden`.
+3. **Container Centralizado Mobile-First**:
+   - O `<main>` do link portal deve possuir `w-full max-w-md px-4 overflow-x-hidden`.
+   - Animações e transições de toque (`whileTap`, `whileHover`) devem ser sutis para não expandir além de 100% da largura da tela no mobile.
+
+---
+
+## 4. Integridade do Painel Administrativo (`/admin`)
 
 1. **Edição do Perfil**:
+   - Permitir que o usuário controle a visibilidade individual dos elementos (`showHandle`, `showBio`, `showContactEmail`).
    - Permitir que o usuário deixe o campo de capa vazio sem forçar o preenchimento automático com fotos antigas.
    - O preview ao vivo deve respeitar o comportamento idêntico da página pública.
 2. **Criação e Modificação de Botões**:
@@ -87,10 +105,12 @@ O bug em que a foto de perfil ocupa a tela inteira ocorre quando a imagem do ava
 
 ---
 
-## 4. Checklist de Verificação Antes de Finalizar Qualquer Tarefa
+## 5. Checklist de Verificação Antes de Finalizar Qualquer Tarefa
 
-- [ ] A página inicial (`/`) carrega instantaneamente sem tela branca ou flash claro?
+- [ ] A página inicial (`/`) não possui nenhuma rolagem horizontal (scroll lateral bloqueado em qualquer largura de tela)?
+- [ ] O layout se encaixa perfeitamente na largura do celular (`max-w-md` centralizado com `px-4`)?
+- [ ] A página inicial carrega instantaneamente sem tela branca ou flash claro?
 - [ ] A foto de perfil (`avatarUrl`) permanece no círculo de 96px/112px e NÃO se espalha pela tela?
 - [ ] Quando `coverImageUrl` está vazia, o topo exibe um gradiente dark em vez da foto do perfil?
-- [ ] O painel administrativo (`/admin`) permite salvar alterações de Perfil, Redes e Botões sem erros?
+- [ ] O painel administrativo (`/admin`) permite salvar e alternar visibilidade sem erros?
 - [ ] O comando `npm run build` compila com sucesso (`0 errors, 0 warnings`)?

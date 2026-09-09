@@ -16,12 +16,15 @@ function sanitizeProfile(data: any): ProfileConfig {
   return {
     name: String(data.name || INITIAL_PROFILE.name),
     handle: String(data.handle || INITIAL_PROFILE.handle),
+    showHandle: data.showHandle !== false,
     isVerified: data.isVerified !== false,
     followersCount: String(data.followersCount || INITIAL_PROFILE.followersCount),
     bio: String(data.bio || INITIAL_PROFILE.bio),
+    showBio: data.showBio !== false,
     avatarUrl: String(data.avatarUrl || INITIAL_PROFILE.avatarUrl),
     coverImageUrl: data.coverImageUrl !== undefined ? String(data.coverImageUrl) : (INITIAL_PROFILE.coverImageUrl || ''),
     contactEmail: String(data.contactEmail || INITIAL_PROFILE.contactEmail),
+    showContactEmail: data.showContactEmail !== false,
   };
 }
 
