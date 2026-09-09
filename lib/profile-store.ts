@@ -18,7 +18,6 @@ function sanitizeProfile(data: any): ProfileConfig {
     handle: String(data.handle || INITIAL_PROFILE.handle),
     isVerified: data.isVerified !== false,
     followersCount: String(data.followersCount || INITIAL_PROFILE.followersCount),
-    tagline: String(data.tagline || INITIAL_PROFILE.tagline),
     bio: String(data.bio || INITIAL_PROFILE.bio),
     avatarUrl: String(data.avatarUrl || INITIAL_PROFILE.avatarUrl),
     coverImageUrl: data.coverImageUrl !== undefined ? String(data.coverImageUrl) : (INITIAL_PROFILE.coverImageUrl || ''),

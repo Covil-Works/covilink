@@ -988,8 +988,7 @@ export default function AdminDashboard() {
               <div className="text-center mt-2">
                 <h4 className="font-bold text-white text-base">{profile.name || 'Nome'}</h4>
                 <p className="text-xs text-gray-400 font-medium">{profile.handle || '@handle'}</p>
-                {profile.tagline && <p className="text-xs font-semibold text-pink-300 mt-1">{profile.tagline}</p>}
-                {profile.bio && <p className="text-[11px] text-gray-400 mt-0.5">{profile.bio}</p>}
+                {profile.bio && <p className="text-xs text-gray-300 mt-1 max-w-xs">{profile.bio}</p>}
               </div>
             </div>
 
@@ -1017,18 +1016,7 @@ export default function AdminDashboard() {
                 />
               </div>
 
-              <div>
-                <label className="text-xs font-bold text-gray-300 block mb-1">Descrição / Subtítulo Principal</label>
-                <input
-                  type="text"
-                  value={profile.tagline}
-                  onChange={(e) => setProfile({ ...profile, tagline: e.target.value })}
-                  placeholder="Ex: Galactic Glam Goddess 🛸"
-                  className="w-full bg-dark-900 border border-white/15 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-brand-cyan"
-                />
-              </div>
-
-              <div>
+              <div className="md:col-span-2">
                 <label className="text-xs font-bold text-gray-300 block mb-1">E-mail Profissional de Contato</label>
                 <input
                   type="email"
@@ -1040,12 +1028,12 @@ export default function AdminDashboard() {
               </div>
 
               <div className="md:col-span-2">
-                <label className="text-xs font-bold text-gray-300 block mb-1">Bio / Descrição Secundária</label>
+                <label className="text-xs font-bold text-gray-300 block mb-1">Bio / Descrição do Perfil</label>
                 <textarea
                   rows={2}
                   value={profile.bio}
                   onChange={(e) => setProfile({ ...profile, bio: e.target.value })}
-                  placeholder="Conte um pouco sobre você..."
+                  placeholder="Escreva sua bio (ex: Criadora de Conteúdo, Empreendedora...)"
                   className="w-full bg-dark-900 border border-white/15 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-brand-cyan resize-none"
                 />
               </div>

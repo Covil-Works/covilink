@@ -36,13 +36,11 @@ export default function LinkPortal({ profile, socials, links }: LinkPortalProps)
   const [copiedEmail, setCopiedEmail] = useState(false);
   const [clickNotice, setClickNotice] = useState<string | null>(null);
 
-  // Safe fallback for profile object to prevent white screen crashes
   const safeProfile: ProfileConfig = {
     name: profile?.name || INITIAL_PROFILE.name,
     handle: profile?.handle || INITIAL_PROFILE.handle,
     isVerified: profile?.isVerified !== false,
     followersCount: profile?.followersCount || INITIAL_PROFILE.followersCount,
-    tagline: profile?.tagline || INITIAL_PROFILE.tagline,
     bio: profile?.bio || INITIAL_PROFILE.bio,
     avatarUrl: profile?.avatarUrl || INITIAL_PROFILE.avatarUrl,
     coverImageUrl: profile?.coverImageUrl || '',
@@ -232,11 +230,8 @@ export default function LinkPortal({ profile, socials, links }: LinkPortalProps)
             </div>
           )}
 
-          {safeProfile.tagline && (
-            <p className="text-xs font-medium text-pink-300 max-w-xs leading-relaxed mt-1 mb-1">{safeProfile.tagline}</p>
-          )}
           {safeProfile.bio && (
-            <p className="text-xs text-gray-400 max-w-xs leading-relaxed">{safeProfile.bio}</p>
+            <p className="text-xs text-gray-300 max-w-xs leading-relaxed mt-1 text-center font-normal">{safeProfile.bio}</p>
           )}
         </div>
 

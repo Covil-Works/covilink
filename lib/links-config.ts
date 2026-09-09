@@ -26,7 +26,7 @@ export interface ProfileConfig {
   handle: string;
   isVerified: boolean;
   followersCount: string;
-  tagline: string;
+  tagline?: string;
   bio: string;
   avatarUrl: string;
   coverImageUrl?: string;
@@ -38,8 +38,7 @@ export const INITIAL_PROFILE: ProfileConfig = {
   handle: "@kourtneyreppert",
   isVerified: true,
   followersCount: "2.4M Total Followers",
-  tagline: "Galactic Glam Goddess 🛸",
-  bio: "Criadora de Conteúdo, Empreendedora & Mentora de Estilo de Vida.",
+  bio: "Galactic Glam Goddess 🛸 | Criadora de Conteúdo, Empreendedora & Mentora de Estilo de Vida.",
   avatarUrl: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=600&q=80",
   coverImageUrl: "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=1200&q=80",
   contactEmail: "contato@kourtneyreppert.com",
