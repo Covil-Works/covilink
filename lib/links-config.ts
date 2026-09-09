@@ -1,0 +1,137 @@
+export interface LinkItem {
+  id: string;
+  type: 'cta-primary' | 'hero-card' | 'grid-card' | 'contact-card';
+  title: string;
+  subtitle?: string;
+  url: string;
+  image?: string;
+  badge?: string;
+  iconName?: string;
+  category: 'mentorship' | 'social' | 'product' | 'content' | 'contact';
+  gridSpan?: 'full' | 'half';
+  active: boolean;
+}
+
+export interface SocialLink {
+  id: string;
+  platform: 'instagram' | 'youtube' | 'twitter' | 'linkedin' | 'spotify' | 'tiktok' | 'github' | 'facebook' | 'whatsapp' | 'twitch' | 'threads' | 'website' | 'other';
+  title: string;
+  url: string;
+  icon?: string;
+  active?: boolean;
+}
+
+export interface ProfileConfig {
+  name: string;
+  handle: string;
+  isVerified: boolean;
+  followersCount: string;
+  tagline: string;
+  bio: string;
+  avatarUrl: string;
+  coverImageUrl?: string;
+  contactEmail: string;
+}
+
+export const INITIAL_PROFILE: ProfileConfig = {
+  name: "Kourtney Reppert",
+  handle: "@kourtneyreppert",
+  isVerified: true,
+  followersCount: "2.4M Total Followers",
+  tagline: "Galactic Glam Goddess 🛸",
+  bio: "Criadora de Conteúdo, Empreendedora & Mentora de Estilo de Vida.",
+  avatarUrl: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=600&q=80",
+  coverImageUrl: "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=1200&q=80",
+  contactEmail: "contato@kourtneyreppert.com",
+};
+
+export const INITIAL_SOCIALS: SocialLink[] = [
+  { id: 'soc-1', platform: 'instagram', title: 'Instagram', url: 'https://instagram.com/kourtneyreppert', active: true },
+  { id: 'soc-2', platform: 'twitter', title: 'X (Twitter)', url: 'https://x.com/kourtneyreppert', active: true },
+  { id: 'soc-3', platform: 'youtube', title: 'YouTube', url: 'https://youtube.com/@kourtneyreppert', active: true },
+  { id: 'soc-4', platform: 'linkedin', title: 'LinkedIn', url: 'https://linkedin.com/in/kourtneyreppert', active: true },
+  { id: 'soc-5', platform: 'spotify', title: 'Spotify', url: 'https://open.spotify.com', active: true },
+  { id: 'soc-6', platform: 'tiktok', title: 'TikTok', url: 'https://tiktok.com/@kourtneyreppert', active: true },
+];
+
+export const INITIAL_LINKS: LinkItem[] = [
+  {
+    id: 'link-mentor-call',
+    type: 'cta-primary',
+    title: 'Agendar Chamada de Mentoria VIP!',
+    subtitle: 'Sessão 1-on-1 exclusiva com horário garantido',
+    url: 'https://calendly.com',
+    badge: 'Populares',
+    iconName: 'Calendar',
+    category: 'mentorship',
+    gridSpan: 'full',
+    active: true,
+  },
+  {
+    id: 'link-indigo-beauty',
+    type: 'hero-card',
+    title: 'Programa Indigo Alien Beauty 🌌👽',
+    subtitle: 'Descubra os segredos da estética futurista & maquiagem',
+    url: 'https://example.com/indigo-beauty',
+    image: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=800&q=80',
+    badge: 'Destaque Principal',
+    category: 'product',
+    gridSpan: 'full',
+    active: true,
+  },
+  {
+    id: 'link-bombshell-glam',
+    type: 'grid-card',
+    title: 'Bombshell Glam Program',
+    subtitle: 'Curso completo de estilo',
+    url: 'https://example.com/bombshell',
+    image: 'https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?auto=format&fit=crop&w=600&q=80',
+    category: 'content',
+    gridSpan: 'half',
+    active: true,
+  },
+  {
+    id: 'link-kr-media',
+    type: 'grid-card',
+    title: 'KR Media: Mentorship & Programs',
+    subtitle: 'Aceleração de negócios criativos',
+    url: 'https://example.com/kr-media',
+    image: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=600&q=80',
+    category: 'mentorship',
+    gridSpan: 'half',
+    active: true,
+  },
+  {
+    id: 'link-ko-art',
+    type: 'grid-card',
+    title: 'Galeria Ko-Art 🎨',
+    subtitle: 'Obras de arte & NFTs exclusivos',
+    url: 'https://example.com/ko-art',
+    image: 'https://images.unsplash.com/photo-1579783902614-a3fb3927b675?auto=format&fit=crop&w=600&q=80',
+    category: 'product',
+    gridSpan: 'half',
+    active: true,
+  },
+  {
+    id: 'link-calendars-merch',
+    type: 'grid-card',
+    title: 'Calendários & Merch Oficial',
+    subtitle: 'Produtos físicos com frete grátis',
+    url: 'https://example.com/merch',
+    image: 'https://images.unsplash.com/photo-1556905055-8f358a7a47b2?auto=format&fit=crop&w=600&q=80',
+    category: 'product',
+    gridSpan: 'half',
+    active: true,
+  },
+  {
+    id: 'link-contact-email',
+    type: 'contact-card',
+    title: 'kourtneyreppertmm@gmail.com',
+    subtitle: 'Clique para copiar ou enviar e-mail profissional',
+    url: 'mailto:kourtneyreppertmm@gmail.com',
+    iconName: 'Mail',
+    category: 'contact',
+    gridSpan: 'full',
+    active: true,
+  }
+];
