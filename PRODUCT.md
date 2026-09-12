@@ -13,7 +13,7 @@ Next.js 14+ (App Router), React, Tailwind CSS, Lucide Icons, Framer Motion, Type
 ## Users
 
 1. **Visitors**: Audience members arriving on the single bio page to view links, videos, products, social networks, and call-to-action cards.
-2. **Owner / Admin**: The project owner accessing `/admin` to view live click metrics, analytics breakdowns, and manage link/media placements.
+2. **Owner / Admin**: The project owner accessing `/admin` to view live click metrics, analytics breakdowns, and manage link/media placements. *Nota de Escopo*: Não existe nem deve existir cadastro ou criação de usuários (sign-up/register terminantemente proibido); o acesso administrativo é pré-existente no Firebase Console.
 
 ## Product Purpose
 
@@ -31,6 +31,7 @@ Unlike complex SaaS link aggregators, `covilink` is a lightweight, self-hostable
 
 ## Capabilities and Constraints
 
+- **No User Creation / Sign-up (Constraint)**: Strictly single-owner instance. No user creation, sign-up, or self-registration flows exist or will be added; authentication is exclusively restricted to pre-existing credentials managed in Firebase Console.
 - **Click Analytics**: Tracks every click on links, social icons, CTA buttons, and visual grid cards (timestamp, link target, category, device type).
 - **Visual Card Layout**: Rich hero banner, social icon row, primary CTA button, 2x2 and full-width visual grid cards with thumbnails, titles, badges, and contact cards.
 - **Admin Dashboard (`/admin`)**: Real-time metrics overview (total clicks, top performing links, conversion rate, device breakdown, activity feed, and live link configuration).

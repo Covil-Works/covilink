@@ -1,8 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import fs from 'fs/promises';
 import path from 'path';
+import { verifyAuth, unauthorizedResponse } from '@/lib/auth-server';
 
 export async function POST(request: NextRequest) {
+  const auth = await verifyAuth(request);
+  if (!auth.authenticated) {
+    return unauthorizedResponse(auth.error);
+  }
+
   try {
     const formData = await request.formData();
     const file = (formData.get('file') || formData.get('image')) as File | null;
@@ -84,7 +90,12 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const auth = await verifyAuth(request);
+  if (!auth.authenticated) {
+    return unauthorizedResponse(auth.error);
+  }
+
   try {
     const uploadsDir = path.join(process.cwd(), 'public', 'uploads');
     await fs.mkdir(uploadsDir, { recursive: true });
@@ -124,6 +135,11 @@ export async function GET() {
 }
 
 export async function DELETE(request: NextRequest) {
+  const auth = await verifyAuth(request);
+  if (!auth.authenticated) {
+    return unauthorizedResponse(auth.error);
+  }
+
   try {
     const { searchParams } = new URL(request.url);
     const filenameParam = searchParams.get('filename') || searchParams.get('url');
@@ -171,4 +187,3 @@ export async function DELETE(request: NextRequest) {
     );
   }
 }
-

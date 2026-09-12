@@ -13,6 +13,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import ImageCropModal from './ImageCropModal';
+import { authFetch } from '@/lib/auth-client';
 
 export interface UploadedImageItem {
   name: string;
@@ -51,7 +52,7 @@ export default function GalleryPickerModal({
   const fetchImages = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/upload');
+      const res = await authFetch('/api/upload');
       const data = await res.json();
       if (data && Array.isArray(data.images)) {
         setImages(data.images);
@@ -85,7 +86,7 @@ export default function GalleryPickerModal({
     formData.append('file', file);
 
     try {
-      const res = await fetch('/api/upload', {
+      const res = await authFetch('/api/upload', {
         method: 'POST',
         body: formData,
       });

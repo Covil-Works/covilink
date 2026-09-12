@@ -9,6 +9,7 @@ import {
   RefreshCw,
   Eye,
 } from 'lucide-react';
+import { authFetch } from '@/lib/auth-client';
 
 export interface ImageCropModalProps {
   isOpen: boolean;
@@ -144,7 +145,7 @@ export default function ImageCropModal({
       const filename = `${prefix}-recortado-${Date.now()}.webp`;
       formData.append('file', blob, filename);
 
-      const res = await fetch('/api/upload', {
+      const res = await authFetch('/api/upload', {
         method: 'POST',
         body: formData,
       });

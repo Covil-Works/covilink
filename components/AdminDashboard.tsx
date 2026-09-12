@@ -31,7 +31,9 @@ import {
   Layers,
   Sliders,
   ExternalLink,
+  LogOut,
 } from 'lucide-react';
+import { useAuth, authFetch } from '@/lib/auth-client';
 import { AnalyticsSummary } from '@/lib/analytics';
 import { INITIAL_LINKS, LinkItem, SocialLink, INITIAL_PROFILE, ProfileConfig } from '@/lib/links-config';
 import { SocialIcon } from '@/components/SocialIcons';
@@ -81,6 +83,7 @@ const BADGE_COLOR_OPTIONS = [
 ];
 
 export default function AdminDashboard() {
+  const { user, signOutUser } = useAuth();
   const [metrics, setMetrics] = useState<AnalyticsSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<TabType>('metrics');
@@ -139,7 +142,7 @@ export default function AdminDashboard() {
   const fetchMetrics = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/metrics');
+      const res = await authFetch('/api/metrics');
       const data = await res.json();
       setMetrics(data);
     } catch (err) {
@@ -152,7 +155,7 @@ export default function AdminDashboard() {
   // Fetch Profile config
   const fetchProfile = async () => {
     try {
-      const res = await fetch('/api/profile');
+      const res = await authFetch('/api/profile');
       const data = await res.json();
       if (data && data.profile) {
         setProfile(data.profile);
@@ -166,7 +169,7 @@ export default function AdminDashboard() {
   // Fetch Socials config
   const fetchSocials = async () => {
     try {
-      const res = await fetch('/api/socials');
+      const res = await authFetch('/api/socials');
       const data = await res.json();
       if (data && Array.isArray(data.socials)) {
         setSocialsList(data.socials);
@@ -180,7 +183,7 @@ export default function AdminDashboard() {
   // Fetch Links config
   const fetchLinks = async () => {
     try {
-      const res = await fetch('/api/links');
+      const res = await authFetch('/api/links');
       const data = await res.json();
       if (data && Array.isArray(data.links)) {
         setLinksList(data.links);
@@ -209,7 +212,7 @@ export default function AdminDashboard() {
       // Save profile if changed
       if (JSON.stringify(profile) !== JSON.stringify(savedProfile)) {
         promises.push(
-          fetch('/api/profile', {
+          authFetch('/api/profile', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ profile }),
@@ -226,7 +229,7 @@ export default function AdminDashboard() {
       // Save socials if changed
       if (JSON.stringify(socialsList) !== JSON.stringify(savedSocials)) {
         promises.push(
-          fetch('/api/socials', {
+          authFetch('/api/socials', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ socials: socialsList }),
@@ -243,7 +246,7 @@ export default function AdminDashboard() {
       // Save links if changed
       if (JSON.stringify(linksList) !== JSON.stringify(savedLinks)) {
         promises.push(
-          fetch('/api/links', {
+          authFetch('/api/links', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ links: linksList }),
@@ -273,7 +276,7 @@ export default function AdminDashboard() {
   const handleResetSocials = async () => {
     if (!confirm('Restaurar as redes sociais padrão?')) return;
     try {
-      const res = await fetch('/api/socials', {
+      const res = await authFetch('/api/socials', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'reset' }),
@@ -370,7 +373,7 @@ export default function AdminDashboard() {
   const handleResetLinks = async () => {
     if (!confirm('Restaurar os botões originais?')) return;
     try {
-      const res = await fetch('/api/links', {
+      const res = await authFetch('/api/links', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'reset' }),
@@ -626,12 +629,51 @@ export default function AdminDashboard() {
 
         </div>
 
-        {/* Sidebar Footer Link */}
-        <div className="pt-4 border-t border-white/[0.08]">
+        {/* Sidebar User Info & Footer */}
+        <div className="pt-4 border-t border-white/[0.08] space-y-2.5">
+          {/* Authenticated User Status */}
+          <div className="flex items-center gap-2.5 p-2 rounded-xl bg-white/[0.03] border border-white/5">
+            <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#ff3b94]/30 to-[#9333ea]/30 border border-white/15 flex items-center justify-center shrink-0 text-white text-xs font-bold overflow-hidden relative">
+              {user?.photoURL ? (
+                <img
+                  src={user.photoURL}
+                  alt={user.displayName || user.email || 'Admin'}
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    (e.currentTarget as HTMLElement).style.display = 'none';
+                  }}
+                />
+              ) : (
+                <span>{(user?.email?.[0] || 'A').toUpperCase()}</span>
+              )}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-semibold text-white truncate">
+                {user?.displayName || (user?.email ? user.email.split('@')[0] : 'Administrador')}
+              </p>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0 animate-pulse" />
+                <span className="text-[10px] text-gray-400 truncate">
+                  {user?.email || 'Conectado'}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Logout Button */}
+          <button
+            type="button"
+            onClick={signOutUser}
+            className="w-full py-2 px-3 rounded-xl border border-rose-500/20 hover:border-rose-500/40 bg-rose-500/5 hover:bg-rose-500/10 text-rose-300 hover:text-rose-200 font-medium text-xs flex items-center justify-center gap-2 transition cursor-pointer"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+            <span>Sair do Admin</span>
+          </button>
+
           <Link
             href="/"
             target="_blank"
-            className="w-full py-2 px-3 rounded-xl border border-white/10 hover:border-white/20 bg-white/[0.02] hover:bg-white/[0.06] text-gray-200 hover:text-white font-medium text-xs flex items-center justify-center gap-2 transition"
+            className="w-full py-2 px-3 rounded-xl border border-white/10 hover:border-white/20 bg-white/[0.02] hover:bg-white/[0.06] text-gray-300 hover:text-white font-medium text-xs flex items-center justify-center gap-2 transition"
           >
             <Eye className="w-3.5 h-3.5" />
             <span>Ver site público</span>
@@ -732,14 +774,24 @@ export default function AdminDashboard() {
             </div>
           </div>
 
-          <Link
-            href="/"
-            target="_blank"
-            className="px-2.5 py-1.5 rounded-xl border border-white/10 bg-white/5 text-[11px] font-medium text-gray-200 flex items-center gap-1.5"
-          >
-            <Eye className="w-3.5 h-3.5" />
-            <span>Ver site</span>
-          </Link>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={signOutUser}
+              title="Sair do Admin"
+              className="p-1.5 rounded-xl border border-rose-500/20 bg-rose-500/10 text-rose-300 hover:text-rose-200 transition cursor-pointer"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
+            <Link
+              href="/"
+              target="_blank"
+              className="px-2.5 py-1.5 rounded-xl border border-white/10 bg-white/5 text-[11px] font-medium text-gray-200 flex items-center gap-1.5"
+            >
+              <Eye className="w-3.5 h-3.5" />
+              <span>Ver site</span>
+            </Link>
+          </div>
         </header>
 
         {/* TAB 1: METRICS */}

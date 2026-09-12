@@ -1,7 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAnalyticsSummary, resetAnalyticsData } from '@/lib/analytics';
+import { verifyAuth, unauthorizedResponse } from '@/lib/auth-server';
 
-export async function GET() {
+export const dynamic = 'force-dynamic';
+
+export async function GET(req: NextRequest) {
+  const auth = await verifyAuth(req);
+  if (!auth.authenticated) {
+    return unauthorizedResponse(auth.error);
+  }
+
   try {
     const metrics = await getAnalyticsSummary();
     return NextResponse.json(metrics);
@@ -12,6 +20,11 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  const auth = await verifyAuth(req);
+  if (!auth.authenticated) {
+    return unauthorizedResponse(auth.error);
+  }
+
   try {
     const { action } = await req.json();
     if (action === 'reset') {

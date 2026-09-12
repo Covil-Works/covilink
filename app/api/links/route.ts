@@ -1,10 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getLinks, saveLinks } from '@/lib/links-store';
 import { INITIAL_LINKS } from '@/lib/links-config';
+import { verifyAuth, unauthorizedResponse } from '@/lib/auth-server';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const auth = await verifyAuth(req);
+  if (!auth.authenticated) {
+    return unauthorizedResponse(auth.error);
+  }
+
   try {
     const links = await getLinks();
     return NextResponse.json({ success: true, links });
@@ -15,6 +21,11 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  const auth = await verifyAuth(req);
+  if (!auth.authenticated) {
+    return unauthorizedResponse(auth.error);
+  }
+
   try {
     const body = await req.json();
     const { action, links } = body;

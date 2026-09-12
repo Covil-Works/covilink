@@ -1,4 +1,6 @@
 import AdminDashboard from '@/components/AdminDashboard';
+import AdminAuthGuard from '@/components/admin/AdminAuthGuard';
+import { AuthProvider } from '@/lib/auth-client';
 
 export const metadata = {
   title: 'Painel Admin & Métricas | Covilink',
@@ -6,5 +8,11 @@ export const metadata = {
 };
 
 export default function AdminPage() {
-  return <AdminDashboard />;
+  return (
+    <AuthProvider>
+      <AdminAuthGuard>
+        <AdminDashboard />
+      </AdminAuthGuard>
+    </AuthProvider>
+  );
 }

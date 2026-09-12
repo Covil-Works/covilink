@@ -16,6 +16,7 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { UploadedImageItem } from './GalleryPickerModal';
+import { authFetch } from '@/lib/auth-client';
 
 function formatBytes(bytes: number, decimals = 1) {
   if (bytes === 0) return '0 B';
@@ -52,7 +53,7 @@ export default function GallerySection() {
   const fetchImages = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/upload');
+      const res = await authFetch('/api/upload');
       const data = await res.json();
       if (data && Array.isArray(data.images)) {
         setImages(data.images);
@@ -83,7 +84,7 @@ export default function GallerySection() {
         const formData = new FormData();
         formData.append('file', file);
 
-        const res = await fetch('/api/upload', {
+        const res = await authFetch('/api/upload', {
           method: 'POST',
           body: formData,
         });
@@ -122,7 +123,7 @@ export default function GallerySection() {
     if (!imageToDelete) return;
     setDeleting(true);
     try {
-      const res = await fetch(`/api/upload?filename=${encodeURIComponent(imageToDelete.name)}`, {
+      const res = await authFetch(`/api/upload?filename=${encodeURIComponent(imageToDelete.name)}`, {
         method: 'DELETE',
       });
       const data = await res.json();

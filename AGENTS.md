@@ -105,6 +105,11 @@ A página DEVE se encaixar perfeitamente na largura da tela de qualquer celular 
    - O texto explicativo (campo `blurText` editável no painel `/admin`, com fallback para *"Clique para ver a foto"*) **NÃO deve ter fundo de pílula** (`rounded-full`, borda ou background sólido), devendo ser renderizado diretamente como texto limpo e legível sobre o backdrop.
 4. **Armazenamento Seguro em `data/`**:
    - Usar gravação atômica (`.tmp` seguido de `rename`) para prevenir corrupção de arquivos JSON durante escritas concorrentes.
+5. **Proibição Absoluta de Criação / Cadastro de Usuários (No User Creation / Sign-up)**:
+   - O **covilink** é um portal de link-in-bio de instância única para uso exclusivo do proprietário.
+   - **NUNCA** implementar funcionalidades, botões, links, abas, modais ou rotas de API para registrar ou criar novos usuários (`createUser`, `signUp`, `register`, `createUserWithEmailAndPassword`, etc.).
+   - O acesso administrativo em `/admin` deve ser estritamente restrito a contas pré-existentes provisionadas diretamente no Firebase Console.
+   - A interface de autenticação (`AdminLoginForm`) deve conter **exclusivamente** os fluxos de login direto e recuperação de senha (`sendPasswordResetEmail`).
 
 ---
 
@@ -117,4 +122,5 @@ A página DEVE se encaixar perfeitamente na largura da tela de qualquer celular 
 - [ ] Quando `coverImageUrl` está vazia, o topo exibe um gradiente dark em vez da foto do perfil?
 - [ ] Os botões com blur possuem ícone branco sem círculo atrás e texto sem fundo de pílula?
 - [ ] O painel administrativo (`/admin`) permite salvar e alternar visibilidade sem erros?
+- [ ] Não existe nenhuma funcionalidade de cadastro ou criação de usuários (sign-up/register terminantemente proibido)?
 - [ ] O comando `npm run build` compila com sucesso (`0 errors, 0 warnings`)?
