@@ -5,6 +5,8 @@ export interface LinkItem {
   subtitle?: string;
   url: string;
   image?: string;
+  imagePosition?: string;
+  imageFit?: 'cover' | 'contain';
   badge?: string;
   iconName?: string;
   category?: 'mentorship' | 'social' | 'product' | 'content' | 'contact' | 'custom';
@@ -54,6 +56,8 @@ export interface ProfileConfig {
   showBio?: boolean;
   avatarUrl: string;
   coverImageUrl?: string;
+  coverPosition?: string;
+  coverFit?: 'cover' | 'contain';
   contactEmail: string;
   showContactEmail?: boolean;
 }

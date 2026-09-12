@@ -1,17 +1,17 @@
 [
   {
-    "id": "soc-1789175315295",
-    "platform": "telegram",
-    "title": "Telegram",
-    "url": "https://t.me/jujuaranibot",
-    "icon": "",
-    "active": true
-  },
-  {
     "id": "soc-1789175319937",
     "platform": "twitter",
     "title": "X (Twitter)",
     "url": "https://x.com/juju_arani",
+    "icon": "",
+    "active": true
+  },
+  {
+    "id": "soc-1789175315295",
+    "platform": "telegram",
+    "title": "Telegram",
+    "url": "https://t.me/jujuaranibot",
     "icon": "",
     "active": true
   },

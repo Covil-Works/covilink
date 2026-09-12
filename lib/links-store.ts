@@ -23,6 +23,8 @@ export function sanitizeLinks(items: any[]): LinkItem[] {
       subtitle: item.subtitle ? String(item.subtitle) : '',
       url: String(item.url || 'https://'),
       image: item.image ? String(item.image) : '',
+      imagePosition: item.imagePosition ? String(item.imagePosition) : (item.image_position ? String(item.image_position) : '50% 50%'),
+      imageFit: (item.imageFit === 'contain' || item.image_fit === 'contain') ? 'contain' : 'cover',
       badge: item.badge ? String(item.badge) : '',
       badgeColor: item.badgeColor ? String(item.badgeColor) : (item.badge_color ? String(item.badge_color) : ''),
       iconName: item.iconName || item.icon_name || 'ExternalLink',

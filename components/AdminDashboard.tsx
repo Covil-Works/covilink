@@ -34,7 +34,16 @@ import {
   Image as ImageIcon,
   ArrowUpDown,
   Edit3,
-  LayoutList
+  LayoutList,
+  UploadCloud,
+  Upload,
+  FolderOpen,
+  X,
+  Crop,
+  Sliders,
+  ZoomIn,
+  ZoomOut,
+  Move
 } from 'lucide-react';
 import { AnalyticsSummary } from '@/lib/analytics';
 import { INITIAL_LINKS, LinkItem, SocialLink, INITIAL_PROFILE, ProfileConfig } from '@/lib/links-config';
@@ -80,6 +89,999 @@ const BADGE_COLOR_OPTIONS = [
   { id: 'white', label: 'Branco', hex: '#ffffff', bgClass: 'bg-[#ffffff]' },
   { id: 'dark', label: 'Preto / Grafite', hex: '#18181b', bgClass: 'bg-[#18181b]' },
 ];
+
+interface UploadedImageItem {
+  name: string;
+  url: string;
+  size: number;
+  updatedAt: number;
+}
+
+function MediaGalleryModal({
+  isOpen,
+  onClose,
+  onSelect,
+  currentUrl,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  onSelect: (url: string) => void;
+  currentUrl?: string;
+}) {
+  const [images, setImages] = useState<UploadedImageItem[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  const fetchImages = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch('/api/upload');
+      const data = await res.json();
+      if (data && Array.isArray(data.images)) {
+        setImages(data.images);
+      }
+    } catch (err) {
+      console.error('Error fetching gallery:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isOpen) {
+      fetchImages();
+    }
+  }, [isOpen]);
+
+  const handleUploadNew = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 15 * 1024 * 1024) {
+      alert('A imagem é muito grande (máximo 15MB).');
+      return;
+    }
+
+    setUploading(true);
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await res.json();
+      if (res.ok && data.success && data.url) {
+        onSelect(data.url);
+        onClose();
+      } else {
+        alert(data.error || 'Erro ao enviar imagem.');
+      }
+    } catch (err) {
+      console.error('Upload error:', err);
+      alert('Erro ao enviar imagem.');
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const handleDeleteImage = async (img: UploadedImageItem, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!confirm(`Excluir permanentemente a imagem "${img.name}" do disco?`)) return;
+
+    try {
+      const res = await fetch(`/api/upload?filename=${encodeURIComponent(img.name)}`, {
+        method: 'DELETE',
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setImages((prev) => prev.filter((item) => item.name !== img.name));
+      } else {
+        alert(data.error || 'Erro ao excluir a imagem.');
+      }
+    } catch (err) {
+      console.error('Delete error:', err);
+      alert('Erro ao excluir a imagem.');
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+      <div className="bg-[#0f111a] border border-white/15 rounded-2xl w-full max-w-2xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
+        
+        {/* Header */}
+        <div className="p-4 border-b border-white/10 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <ImageIcon className="w-5 h-5 text-brand-cyan" />
+            <div>
+              <h3 className="text-sm font-bold text-white">Galeria de Imagens do Site</h3>
+              <p className="text-[11px] text-gray-400">Escolha uma imagem já enviada ou suba uma nova</p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Action bar */}
+        <div className="p-3 bg-white/5 border-b border-white/10 flex items-center justify-between gap-3">
+          <span className="text-xs text-gray-400 font-medium">
+            {images.length} {images.length === 1 ? 'imagem salva' : 'imagens salvas'} no diretório <code className="text-gray-300">public/uploads/</code>
+          </span>
+
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleUploadNew}
+            accept="image/png,image/jpeg,image/jpg,image/webp,image/gif,image/svg+xml,image/avif"
+            className="hidden"
+          />
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={fetchImages}
+              disabled={loading}
+              className="p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 hover:text-white transition"
+              title="Atualizar lista"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+            </button>
+
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
+              className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-brand-cyan to-brand-purple text-white font-bold text-xs hover:opacity-90 flex items-center gap-1.5 transition disabled:opacity-50 shadow-md"
+            >
+              {uploading ? (
+                <>
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                  <span>Enviando...</span>
+                </>
+              ) : (
+                <>
+                  <UploadCloud className="w-3.5 h-3.5" />
+                  <span>Subir Nova Imagem</span>
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+
+        {/* Gallery Grid Content */}
+        <div className="p-4 overflow-y-auto max-h-[55vh] flex-1">
+          {loading && images.length === 0 ? (
+            <div className="py-12 flex flex-col items-center justify-center text-gray-400 gap-2">
+              <RefreshCw className="w-6 h-6 animate-spin text-brand-cyan" />
+              <span className="text-xs">Carregando galeria...</span>
+            </div>
+          ) : images.length === 0 ? (
+            <div className="py-12 flex flex-col items-center justify-center text-gray-400 gap-3 text-center">
+              <div className="w-12 h-12 rounded-2xl bg-white/5 border border-dashed border-white/15 flex items-center justify-center text-gray-500">
+                <ImageIcon className="w-6 h-6" />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-white">Nenhuma imagem enviada ainda</p>
+                <p className="text-[11px] text-gray-400 mt-0.5">Suba a sua primeira imagem clicando no botão acima.</p>
+              </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+              {images.map((img) => {
+                const isSelected = currentUrl === img.url;
+                return (
+                  <div
+                    key={img.name}
+                    onClick={() => {
+                      onSelect(img.url);
+                      onClose();
+                    }}
+                    className={`group relative rounded-xl border p-2 cursor-pointer transition flex flex-col items-center justify-between gap-2 overflow-hidden ${
+                      isSelected
+                        ? 'bg-brand-cyan/15 border-brand-cyan shadow-glow-cyan'
+                        : 'bg-white/5 border-white/10 hover:border-white/25 hover:bg-white/10'
+                    }`}
+                  >
+                    <div className="w-full aspect-square rounded-lg bg-dark-900 overflow-hidden relative border border-white/10 flex items-center justify-center">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={img.url}
+                        alt={img.name}
+                        className="w-full h-full object-cover group-hover:scale-105 transition"
+                        onError={(e) => {
+                          (e.currentTarget as HTMLElement).style.display = 'none';
+                        }}
+                      />
+                      {isSelected && (
+                        <div className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-brand-cyan text-dark-900 flex items-center justify-center shadow">
+                          <Check className="w-3 h-3 stroke-[3]" />
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="w-full flex items-center justify-between gap-1 text-[10px]">
+                      <div className="truncate flex-1 text-gray-300 font-mono" title={img.name}>
+                        {img.name}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={(e) => handleDeleteImage(img, e)}
+                        className="p-1 rounded-md text-gray-500 hover:text-red-400 hover:bg-red-500/10 transition shrink-0"
+                        title="Excluir imagem do disco"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="p-3 border-t border-white/10 flex justify-end">
+          <button
+            onClick={onClose}
+            className="px-4 py-1.5 rounded-xl bg-white/10 hover:bg-white/15 border border-white/15 text-xs font-semibold text-white transition"
+          >
+            Fechar
+          </button>
+        </div>
+
+      </div>
+    </div>
+  );
+}
+
+interface ImageCropModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  imageUrl: string;
+  initialPosition?: string;
+  initialFit?: 'cover' | 'contain';
+  aspectRatio?: 'banner' | 'card' | 'square' | 'auto';
+  showAvatarGuide?: boolean;
+  title?: string;
+  onSaveCrop: (croppedUrl: string, position: string, fit: 'cover' | 'contain') => void;
+}
+
+function ImageCropModal({
+  isOpen,
+  onClose,
+  imageUrl,
+  initialPosition = '50% 50%',
+  initialFit = 'cover',
+  aspectRatio = 'card',
+  showAvatarGuide = false,
+  title = 'Ajustar Enquadramento da Imagem',
+  onSaveCrop,
+}: ImageCropModalProps) {
+  const parsePos = (posStr: string) => {
+    const parts = (posStr || '50% 50%').split(' ');
+    const x = parseInt(parts[0]) || 50;
+    const y = parseInt(parts[1]) || 50;
+    return { x, y };
+  };
+
+  const [posX, setPosX] = useState(50);
+  const [posY, setPosY] = useState(50);
+  const [zoom, setZoom] = useState(100);
+  const [fit, setFit] = useState<'cover' | 'contain'>('cover');
+  const [avatarGuideActive, setAvatarGuideActive] = useState(showAvatarGuide);
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      const parsed = parsePos(initialPosition);
+      setPosX(parsed.x);
+      setPosY(parsed.y);
+      setZoom(100);
+      setFit(initialFit || 'cover');
+      setAvatarGuideActive(showAvatarGuide);
+    }
+  }, [isOpen, initialPosition, initialFit, showAvatarGuide]);
+
+  if (!isOpen || !imageUrl) return null;
+
+  const handleCropAndSave = async () => {
+    setIsProcessing(true);
+    try {
+      const img = document.createElement('img');
+      img.crossOrigin = 'anonymous';
+      img.src = imageUrl;
+
+      await new Promise((resolve, reject) => {
+        if (img.complete) resolve(true);
+        img.onload = () => resolve(true);
+        img.onerror = () => reject(new Error('Falha ao carregar imagem para recorte'));
+      });
+
+      let targetW = 800;
+      let targetH = 450;
+      let prefix = 'card';
+
+      if (aspectRatio === 'banner') {
+        targetW = 1200;
+        targetH = 480;
+        prefix = 'banner';
+      } else if (aspectRatio === 'square') {
+        targetW = 600;
+        targetH = 600;
+        prefix = 'foto';
+      }
+
+      const canvas = document.createElement('canvas');
+      canvas.width = targetW;
+      canvas.height = targetH;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) throw new Error('Contexto 2D não disponível');
+
+      ctx.fillStyle = '#08090d';
+      ctx.fillRect(0, 0, targetW, targetH);
+
+      const scaleMultiplier = zoom / 100;
+      const imgW = img.naturalWidth || img.width;
+      const imgH = img.naturalHeight || img.height;
+
+      if (fit === 'contain') {
+        ctx.save();
+        ctx.filter = 'blur(20px) brightness(0.4)';
+        ctx.drawImage(img, -50, -50, targetW + 100, targetH + 100);
+        ctx.restore();
+
+        const ratio = Math.min(targetW / imgW, targetH / imgH) * scaleMultiplier;
+        const drawW = imgW * ratio;
+        const drawH = imgH * ratio;
+        const drawX = (targetW - drawW) * (posX / 100);
+        const drawY = (targetH - drawH) * (posY / 100);
+
+        ctx.drawImage(img, drawX, drawY, drawW, drawH);
+      } else {
+        const baseRatio = Math.max(targetW / imgW, targetH / imgH);
+        const finalRatio = baseRatio * scaleMultiplier;
+        const drawW = imgW * finalRatio;
+        const drawH = imgH * finalRatio;
+
+        const drawX = (targetW - drawW) * (posX / 100);
+        const drawY = (targetH - drawH) * (posY / 100);
+
+        ctx.drawImage(img, drawX, drawY, drawW, drawH);
+      }
+
+      if (aspectRatio === 'banner') {
+        const gradient = ctx.createLinearGradient(0, targetH * 0.5, 0, targetH);
+        gradient.addColorStop(0, 'rgba(8, 9, 13, 0)');
+        gradient.addColorStop(1, 'rgba(8, 9, 13, 0.6)');
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, targetW, targetH);
+      }
+
+      const blob = await new Promise<Blob | null>((resolve) =>
+        canvas.toBlob((b) => resolve(b), 'image/webp', 0.92)
+      );
+
+      if (!blob) throw new Error('Falha ao gerar blob recortado.');
+
+      const formData = new FormData();
+      const filename = `${prefix}-recortado-${Date.now()}.webp`;
+      formData.append('file', blob, filename);
+
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await res.json();
+
+      if (res.ok && data.success && data.url) {
+        onSaveCrop(data.url, '50% 50%', 'cover');
+        onClose();
+      } else {
+        onSaveCrop(imageUrl, `${posX}% ${posY}%`, fit);
+        onClose();
+      }
+    } catch (err) {
+      console.warn('Fallback to CSS position/fit:', err);
+      onSaveCrop(imageUrl, `${posX}% ${posY}%`, fit);
+      onClose();
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-150">
+      <div className="bg-[#0f111a] border border-white/15 rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+        
+        {/* Header */}
+        <div className="p-4 border-b border-white/10 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Crop className="w-5 h-5 text-brand-cyan" />
+            <div>
+              <h3 className="text-sm font-bold text-white">{title}</h3>
+              <p className="text-[11px] text-gray-400">Posicione, dê zoom ou recorte a imagem</p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Content Body */}
+        <div className="p-5 overflow-y-auto space-y-5 flex-1">
+          
+          {/* Real-time Visual Preview Box */}
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-gray-300 flex items-center gap-1.5">
+                <Eye className="w-3.5 h-3.5 text-brand-cyan" />
+                <span>Pré-visualização do Enquadramento</span>
+              </span>
+              {showAvatarGuide && (
+                <button
+                  type="button"
+                  onClick={() => setAvatarGuideActive(!avatarGuideActive)}
+                  className={`text-[10px] px-2 py-0.5 rounded-full border transition flex items-center gap-1 font-semibold ${
+                    avatarGuideActive
+                      ? 'bg-brand-cyan/20 text-brand-cyan border-brand-cyan/40'
+                      : 'bg-white/5 text-gray-400 border-white/10'
+                  }`}
+                >
+                  <span>{avatarGuideActive ? 'Guia do Avatar Ativo' : 'Ocultar Guia do Avatar'}</span>
+                </button>
+              )}
+            </div>
+
+            {/* Frame Container */}
+            <div className="flex justify-center">
+              <div
+                className={`rounded-2xl overflow-hidden relative border border-white/20 shadow-2xl bg-dark-900 flex items-center justify-center ${
+                  aspectRatio === 'banner'
+                    ? 'w-full h-44 sm:h-48'
+                    : aspectRatio === 'square'
+                    ? 'w-44 h-44 sm:w-52 sm:h-52 aspect-square'
+                    : 'w-full h-44 sm:h-48 aspect-video max-w-md'
+                }`}
+              >
+                {fit === 'contain' && (
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  <img
+                    src={imageUrl}
+                    alt="Ambient BG"
+                    className="absolute inset-0 w-full h-full object-cover blur-xl opacity-30 scale-125 pointer-events-none"
+                  />
+                )}
+
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={imageUrl}
+                  alt="Preview"
+                  className="w-full h-full select-none pointer-events-none transition-all duration-75"
+                  style={{
+                    objectFit: fit,
+                    objectPosition: `${posX}% ${posY}%`,
+                    transform: zoom !== 100 ? `scale(${zoom / 100})` : undefined,
+                    transformOrigin: `${posX}% ${posY}%`,
+                  }}
+                />
+
+                {aspectRatio === 'banner' && (
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#08090d]/80 via-transparent to-black/20 pointer-events-none" />
+                )}
+
+                {showAvatarGuide && avatarGuideActive && (
+                  <div className="absolute -bottom-10 left-1/2 -translate-x-1/2 w-20 h-20 sm:w-24 sm:h-24 rounded-full border-2 border-dashed border-white/60 bg-black/40 backdrop-blur-xs flex flex-col items-center justify-center text-center pointer-events-none z-10 shadow-xl">
+                    <span className="text-[9px] font-bold text-white tracking-wider uppercase drop-shadow">Foto Perfil</span>
+                  </div>
+                )}
+              </div>
+            </div>
+            {showAvatarGuide && (
+              <p className="text-[10px] text-gray-400 text-center">
+                O círculo pontilhado indica onde sua foto de perfil ficará sobreposta no banner.
+              </p>
+            )}
+          </div>
+
+          {/* Controls Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-xl bg-white/5 border border-white/10">
+            
+            {/* Vertical Position (Y) */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold text-gray-300">Posição Vertical (Altura)</label>
+                <span className="text-xs font-mono text-brand-cyan font-bold">{posY}%</span>
+              </div>
+              <input
+                type="range"
+                min="0"
+                max="100"
+                value={posY}
+                onChange={(e) => setPosY(Number(e.target.value))}
+                className="w-full accent-cyan-400 cursor-pointer"
+              />
+              <div className="flex items-center gap-1.5 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setPosY(0)}
+                  className="px-2 py-1 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-[10px] text-gray-300 hover:text-white transition flex-1"
+                >
+                  ⬆️ Topo (0%)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPosY(50)}
+                  className="px-2 py-1 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-[10px] text-gray-300 hover:text-white transition flex-1"
+                >
+                  🎯 Centro (50%)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPosY(100)}
+                  className="px-2 py-1 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-[10px] text-gray-300 hover:text-white transition flex-1"
+                >
+                  ⬇️ Base (100%)
+                </button>
+              </div>
+            </div>
+
+            {/* Horizontal Position (X) */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold text-gray-300">Posição Horizontal (Largura)</label>
+                <span className="text-xs font-mono text-brand-cyan font-bold">{posX}%</span>
+              </div>
+              <input
+                type="range"
+                min="0"
+                max="100"
+                value={posX}
+                onChange={(e) => setPosX(Number(e.target.value))}
+                className="w-full accent-cyan-400 cursor-pointer"
+              />
+              <div className="flex items-center gap-1.5 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setPosX(0)}
+                  className="px-2 py-1 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-[10px] text-gray-300 hover:text-white transition flex-1"
+                >
+                  ⬅️ Esquerda
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPosX(50)}
+                  className="px-2 py-1 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-[10px] text-gray-300 hover:text-white transition flex-1"
+                >
+                  🎯 Centro
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPosX(100)}
+                  className="px-2 py-1 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-[10px] text-gray-300 hover:text-white transition flex-1"
+                >
+                  ➡️ Direita
+                </button>
+              </div>
+            </div>
+
+            {/* Zoom / Scale */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold text-gray-300">Zoom / Escala</label>
+                <span className="text-xs font-mono text-brand-cyan font-bold">{zoom}%</span>
+              </div>
+              <input
+                type="range"
+                min="100"
+                max="250"
+                value={zoom}
+                onChange={(e) => setZoom(Number(e.target.value))}
+                className="w-full accent-cyan-400 cursor-pointer"
+              />
+              <div className="flex items-center justify-between text-[10px] text-gray-400">
+                <span>100% (Normal)</span>
+                <button
+                  type="button"
+                  onClick={() => setZoom(100)}
+                  className="text-brand-cyan hover:underline"
+                >
+                  Resetar Zoom
+                </button>
+                <span>250% (Max)</span>
+              </div>
+            </div>
+
+            {/* Modo de Encaixe */}
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-gray-300 block">Modo de Enquadramento</label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setFit('cover')}
+                  className={`p-2 rounded-xl text-xs font-bold border transition text-left flex flex-col ${
+                    fit === 'cover'
+                      ? 'bg-brand-cyan/20 border-brand-cyan text-white shadow-glow-cyan'
+                      : 'bg-white/5 border-white/10 text-gray-400 hover:text-white'
+                  }`}
+                >
+                  <span>Preencher (Cover)</span>
+                  <span className="text-[9px] font-normal opacity-75">Corta sobras da imagem</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFit('contain')}
+                  className={`p-2 rounded-xl text-xs font-bold border transition text-left flex flex-col ${
+                    fit === 'contain'
+                      ? 'bg-brand-cyan/20 border-brand-cyan text-white shadow-glow-cyan'
+                      : 'bg-white/5 border-white/10 text-gray-400 hover:text-white'
+                  }`}
+                >
+                  <span>Conter (Inteira)</span>
+                  <span className="text-[9px] font-normal opacity-75">Mostra 100% da foto</span>
+                </button>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+
+        {/* Footer Actions */}
+        <div className="p-4 border-t border-white/10 bg-[#0b0c13] flex flex-col sm:flex-row items-center justify-between gap-3">
+          <button
+            type="button"
+            onClick={() => {
+              setPosX(50);
+              setPosY(50);
+              setZoom(100);
+              setFit('cover');
+            }}
+            className="text-xs text-gray-400 hover:text-white transition flex items-center gap-1.5"
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+            <span>Resetar Ajustes</span>
+          </button>
+
+          <div className="flex items-center gap-2 self-stretch sm:self-auto">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-semibold text-gray-300 hover:text-white transition"
+            >
+              Cancelar
+            </button>
+
+            <button
+              type="button"
+              onClick={handleCropAndSave}
+              disabled={isProcessing}
+              className="px-5 py-2 rounded-xl bg-gradient-to-r from-brand-cyan to-brand-purple text-white font-bold text-xs hover:opacity-90 flex items-center gap-2 transition shadow-lg shadow-cyan-500/20 disabled:opacity-50"
+            >
+              {isProcessing ? (
+                <>
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                  <span>Processando Recorte...</span>
+                </>
+              ) : (
+                <>
+                  <Check className="w-4 h-4" />
+                  <span>Aplicar Enquadramento</span>
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  );
+}
+
+interface ImageUploadFieldProps {
+  label: string;
+  value: string;
+  onChange: (url: string) => void;
+  placeholder?: string;
+  helpText?: string;
+  allowCrop?: boolean;
+  cropAspectRatio?: 'banner' | 'card' | 'square' | 'auto';
+  showAvatarGuide?: boolean;
+  cropTitle?: string;
+  position?: string;
+  onPositionChange?: (pos: string) => void;
+  fit?: 'cover' | 'contain';
+  onFitChange?: (fit: 'cover' | 'contain') => void;
+}
+
+function ImageUploadField({
+  label,
+  value,
+  onChange,
+  placeholder = 'https://... ou suba um arquivo',
+  helpText,
+  allowCrop = true,
+  cropAspectRatio = 'card',
+  showAvatarGuide = false,
+  cropTitle,
+  position = '50% 50%',
+  onPositionChange,
+  fit = 'cover',
+  onFitChange,
+}: ImageUploadFieldProps) {
+  const [uploading, setUploading] = useState(false);
+  const [uploadSuccess, setUploadSuccess] = useState(false);
+  const [galleryOpen, setGalleryOpen] = useState(false);
+  const [cropOpen, setCropOpen] = useState(false);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 15 * 1024 * 1024) {
+      alert('A imagem é muito grande (máximo 15MB).');
+      return;
+    }
+
+    setUploading(true);
+    setUploadSuccess(false);
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await res.json();
+      if (res.ok && data.success && data.url) {
+        onChange(data.url);
+        setUploadSuccess(true);
+        setTimeout(() => setUploadSuccess(false), 3000);
+      } else {
+        alert(data.error || 'Erro ao enviar a imagem.');
+      }
+    } catch (err: any) {
+      console.error('Upload error:', err);
+      alert('Erro de conexão ao fazer upload da imagem.');
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  const hasImage = Boolean(value && value.trim() !== '');
+
+  return (
+    <div className="space-y-1.5 w-full">
+      <div className="flex items-center justify-between">
+        <label className="text-[10px] text-gray-400 uppercase font-semibold block">
+          {label}
+        </label>
+        {hasImage && (
+          <button
+            type="button"
+            onClick={() => onChange('')}
+            className="text-[10px] text-red-400 hover:text-red-300 transition flex items-center gap-1 font-medium"
+            title="Remover imagem"
+          >
+            <Trash2 className="w-3 h-3" />
+            <span>Remover foto</span>
+          </button>
+        )}
+      </div>
+
+      <div className="flex items-center gap-2">
+        {/* Preview Thumbnail */}
+        {hasImage ? (
+          <div className="w-9 h-9 rounded-xl bg-dark-800 border border-white/15 overflow-hidden shrink-0 relative flex items-center justify-center">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={value}
+              alt="Prévia"
+              className="w-full h-full"
+              style={{
+                objectPosition: position || '50% 50%',
+                objectFit: fit || 'cover',
+              }}
+              onError={(e) => {
+                (e.currentTarget as HTMLElement).style.display = 'none';
+              }}
+            />
+          </div>
+        ) : (
+          <div className="w-9 h-9 rounded-xl bg-white/5 border border-dashed border-white/15 flex items-center justify-center shrink-0 text-gray-500">
+            <ImageIcon className="w-4 h-4" />
+          </div>
+        )}
+
+        {/* URL Input */}
+        <input
+          type="text"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
+          className="flex-1 min-w-0 bg-dark-900 border border-white/15 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-brand-cyan font-mono"
+        />
+
+        {/* Hidden File Input */}
+        <input
+          type="file"
+          ref={fileInputRef}
+          onChange={handleFileChange}
+          accept="image/png,image/jpeg,image/jpg,image/webp,image/gif,image/svg+xml,image/avif"
+          className="hidden"
+        />
+
+        {/* Galeria Button */}
+        <button
+          type="button"
+          onClick={() => setGalleryOpen(true)}
+          className="px-2.5 py-1.5 rounded-xl border border-white/15 hover:border-white/30 bg-white/5 hover:bg-white/10 text-xs font-bold text-gray-200 hover:text-white transition shrink-0 flex items-center gap-1.5"
+          title="Abrir galeria de imagens salvas"
+        >
+          <FolderOpen className="w-3.5 h-3.5 text-purple-300" />
+          <span className="hidden sm:inline">Galeria</span>
+        </button>
+
+        {/* Direct Upload Button */}
+        <button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={uploading}
+          className={`px-3 py-1.5 rounded-xl border text-xs font-bold transition shrink-0 flex items-center gap-1.5 ${
+            uploadSuccess
+              ? 'bg-green-500/20 text-green-300 border-green-500/40'
+              : 'bg-white/10 hover:bg-white/15 border-white/15 hover:border-white/30 text-white disabled:opacity-50'
+          }`}
+          title="Fazer upload de nova imagem do computador"
+        >
+          {uploading ? (
+            <>
+              <RefreshCw className="w-3.5 h-3.5 animate-spin text-brand-cyan" />
+              <span className="hidden sm:inline">Enviando...</span>
+            </>
+          ) : uploadSuccess ? (
+            <>
+              <Check className="w-3.5 h-3.5 text-green-400" />
+              <span className="hidden sm:inline">Enviado!</span>
+            </>
+          ) : (
+            <>
+              <UploadCloud className="w-3.5 h-3.5 text-brand-cyan" />
+              <span className="hidden sm:inline">Subir Foto</span>
+              <span className="sm:hidden">Subir</span>
+            </>
+          )}
+        </button>
+
+        {/* Crop / Adjust Button */}
+        {hasImage && allowCrop && (
+          <button
+            type="button"
+            onClick={() => setCropOpen(true)}
+            className="px-2.5 py-1.5 rounded-xl border border-brand-cyan/30 hover:border-brand-cyan/50 bg-brand-cyan/15 hover:bg-brand-cyan/25 text-xs font-bold text-brand-cyan hover:text-white transition shrink-0 flex items-center gap-1.5 shadow-sm"
+            title="Ajustar enquadramento e recortar foto"
+          >
+            <Crop className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Ajustar</span>
+          </button>
+        )}
+      </div>
+
+      {/* Quick position & fit adjustment presets */}
+      {hasImage && (onPositionChange || onFitChange) && (
+        <div className="flex items-center gap-1.5 flex-wrap pt-0.5 text-[10px]">
+          <span className="text-gray-400 font-semibold mr-0.5 flex items-center gap-1">
+            <Sliders className="w-3 h-3 text-brand-cyan" />
+            <span>Ajuste Rápido:</span>
+          </span>
+          {onPositionChange && (
+            <>
+              <button
+                type="button"
+                onClick={() => onPositionChange('50% 0%')}
+                className={`px-2 py-0.5 rounded-md border transition ${
+                  position === '50% 0%'
+                    ? 'bg-brand-cyan/20 border-brand-cyan/40 text-brand-cyan font-bold'
+                    : 'bg-white/5 hover:bg-white/10 border-white/10 text-gray-300'
+                }`}
+                title="Alinhar ao Topo"
+              >
+                ⬆️ Topo
+              </button>
+              <button
+                type="button"
+                onClick={() => onPositionChange('50% 50%')}
+                className={`px-2 py-0.5 rounded-md border transition ${
+                  position === '50% 50%' || !position
+                    ? 'bg-brand-cyan/20 border-brand-cyan/40 text-brand-cyan font-bold'
+                    : 'bg-white/5 hover:bg-white/10 border-white/10 text-gray-300'
+                }`}
+                title="Alinhar ao Centro"
+              >
+                🎯 Centro
+              </button>
+              <button
+                type="button"
+                onClick={() => onPositionChange('50% 100%')}
+                className={`px-2 py-0.5 rounded-md border transition ${
+                  position === '50% 100%'
+                    ? 'bg-brand-cyan/20 border-brand-cyan/40 text-brand-cyan font-bold'
+                    : 'bg-white/5 hover:bg-white/10 border-white/10 text-gray-300'
+                }`}
+                title="Alinhar à Base"
+              >
+                ⬇️ Base
+              </button>
+            </>
+          )}
+          {onFitChange && (
+            <button
+              type="button"
+              onClick={() => onFitChange(fit === 'contain' ? 'cover' : 'contain')}
+              className={`px-2 py-0.5 rounded-md border transition ${
+                fit === 'contain'
+                  ? 'bg-brand-cyan/20 border-brand-cyan/40 text-brand-cyan font-bold'
+                  : 'bg-white/5 hover:bg-white/10 border-white/10 text-gray-300'
+              }`}
+              title="Alternar entre preencher ou conter foto inteira"
+            >
+              🖼️ {fit === 'contain' ? 'Modo Inteiro (Ativo)' : 'Encaixar Inteira'}
+            </button>
+          )}
+          <span className="ml-auto text-gray-500 font-mono text-[9px]">
+            {position || '50% 50%'} ({fit === 'contain' ? 'Inteira' : 'Preencher'})
+          </span>
+        </div>
+      )}
+
+      {helpText && <p className="text-[10px] text-gray-500">{helpText}</p>}
+
+      {/* Gallery Modal */}
+      <MediaGalleryModal
+        isOpen={galleryOpen}
+        onClose={() => setGalleryOpen(false)}
+        onSelect={(url) => onChange(url)}
+        currentUrl={value}
+      />
+
+      {/* Unified Image Crop Modal */}
+      {hasImage && allowCrop && (
+        <ImageCropModal
+          isOpen={cropOpen}
+          onClose={() => setCropOpen(false)}
+          imageUrl={value}
+          initialPosition={position || '50% 50%'}
+          initialFit={fit || 'cover'}
+          aspectRatio={cropAspectRatio}
+          showAvatarGuide={showAvatarGuide}
+          title={cropTitle || `Ajustar Enquadramento: ${label}`}
+          onSaveCrop={(croppedUrl, newPos, newFit) => {
+            onChange(croppedUrl);
+            onPositionChange?.(newPos);
+            onFitChange?.(newFit);
+          }}
+        />
+      )}
+    </div>
+  );
+}
 
 export default function AdminDashboard() {
   const [metrics, setMetrics] = useState<AnalyticsSummary | null>(null);
@@ -387,6 +1389,8 @@ export default function AdminDashboard() {
       subtitle: 'Descrição do seu botão',
       url: 'https://exemplo.com',
       image: type !== 'no-photo' ? 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=600&q=80' : '',
+      imagePosition: '50% 50%',
+      imageFit: 'cover',
       active: true,
       hasBlur: false,
       blurText: '',
@@ -958,7 +1962,11 @@ export default function AdminDashboard() {
                   <img
                     src={profile.coverImageUrl}
                     alt="Previa da Capa"
-                    className="absolute inset-0 w-full h-full object-cover"
+                    className="absolute inset-0 w-full h-full"
+                    style={{
+                      objectPosition: profile.coverPosition || '50% 50%',
+                      objectFit: profile.coverFit || 'cover',
+                    }}
                     onError={(e) => {
                       (e.currentTarget as HTMLElement).style.display = 'none';
                     }}
@@ -1142,24 +2150,33 @@ export default function AdminDashboard() {
               </div>
 
               <div>
-                <label className="text-xs font-bold text-gray-300 block mb-1">URL da Foto de Perfil (Avatar)</label>
-                <input
-                  type="text"
+                <ImageUploadField
+                  label="Foto de Perfil (Avatar)"
                   value={profile.avatarUrl}
-                  onChange={(e) => setProfile({ ...profile, avatarUrl: e.target.value })}
-                  placeholder="https://..."
-                  className="w-full bg-dark-900 border border-white/15 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-brand-cyan font-mono"
+                  onChange={(url) => setProfile({ ...profile, avatarUrl: url })}
+                  placeholder="https://... ou suba um arquivo"
+                  allowCrop={true}
+                  cropAspectRatio="square"
+                  cropTitle="Ajustar Foto de Perfil"
+                  helpText="Recomendado: proporção 1:1 (quadrada)."
                 />
               </div>
 
               <div>
-                <label className="text-xs font-bold text-gray-300 block mb-1">URL da Foto de Capa (Header)</label>
-                <input
-                  type="text"
+                <ImageUploadField
+                  label="Foto de Capa (Header / Banner)"
                   value={profile.coverImageUrl || ''}
-                  onChange={(e) => setProfile({ ...profile, coverImageUrl: e.target.value })}
-                  placeholder="https://..."
-                  className="w-full bg-dark-900 border border-white/15 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-brand-cyan font-mono"
+                  onChange={(url) => setProfile({ ...profile, coverImageUrl: url })}
+                  placeholder="https://... ou suba um arquivo"
+                  allowCrop={true}
+                  cropAspectRatio="banner"
+                  showAvatarGuide={true}
+                  cropTitle="Ajustar Foto de Capa (Banner)"
+                  position={profile.coverPosition}
+                  onPositionChange={(pos) => setProfile({ ...profile, coverPosition: pos })}
+                  fit={profile.coverFit}
+                  onFitChange={(fit) => setProfile({ ...profile, coverFit: fit })}
+                  helpText="Deixe vazio para exibir o gradiente escuro elegante."
                 />
               </div>
             </div>
@@ -1598,16 +2615,24 @@ export default function AdminDashboard() {
                     </div>
 
                     {item.type !== 'no-photo' && (
-                      <div>
-                        <label className="text-[10px] text-gray-400 uppercase font-semibold block mb-1">
-                          URL da Imagem / Foto
-                        </label>
-                        <input
-                          type="text"
+                      <div className="md:col-span-2">
+                        <ImageUploadField
+                          label="Foto / Imagem do Botão"
                           value={item.image || ''}
-                          onChange={(e) => updateLinkItem(item.id, 'image', e.target.value)}
-                          placeholder="https://..."
-                          className="w-full bg-dark-900 border border-white/15 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-purple-400 font-mono"
+                          onChange={(url) => updateLinkItem(item.id, 'image', url)}
+                          placeholder="https://... ou suba uma foto"
+                          allowCrop={true}
+                          cropAspectRatio={item.type === 'left-thumb' ? 'square' : 'card'}
+                          cropTitle={`Ajustar Imagem: ${item.title || 'Botão'}`}
+                          position={item.imagePosition}
+                          onPositionChange={(pos) => updateLinkItem(item.id, 'imagePosition', pos)}
+                          fit={item.imageFit}
+                          onFitChange={(fit) => updateLinkItem(item.id, 'imageFit', fit)}
+                          helpText={
+                            item.type === 'left-thumb'
+                              ? 'Miniatura na lateral esquerda (proporção 1:1 quadrada recomendada).'
+                              : 'Card visual com foto em destaque grande (proporção 16:9 recomendada).'
+                          }
                         />
                       </div>
                     )}
@@ -1806,7 +2831,11 @@ export default function AdminDashboard() {
                         <img
                           src={item.image}
                           alt={item.title}
-                          className="absolute inset-0 w-full h-full object-cover"
+                          className="absolute inset-0 w-full h-full"
+                          style={{
+                            objectPosition: item.imagePosition || '50% 50%',
+                            objectFit: item.imageFit || 'cover',
+                          }}
                           onError={(e) => {
                             (e.currentTarget as HTMLElement).style.display = 'none';
                           }}

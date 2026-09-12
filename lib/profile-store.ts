@@ -28,6 +28,12 @@ export function sanitizeProfile(data: any): ProfileConfig {
       : data.cover_image_url !== undefined 
         ? String(data.cover_image_url) 
         : (INITIAL_PROFILE.coverImageUrl || ''),
+    coverPosition: data.coverPosition !== undefined 
+      ? String(data.coverPosition) 
+      : data.cover_position !== undefined 
+        ? String(data.cover_position) 
+        : '50% 50%',
+    coverFit: (data.coverFit === 'contain' || data.cover_fit === 'contain') ? 'contain' : 'cover',
     contactEmail: String(data.contactEmail || data.contact_email || INITIAL_PROFILE.contactEmail),
     showContactEmail: data.showContactEmail !== false && data.show_contact_email !== false,
   };

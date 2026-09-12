@@ -7,7 +7,6 @@ import {
   Mail,
   Calendar,
   Sparkles,
-  BarChart3,
   Check,
   EyeOff
 } from 'lucide-react';
@@ -88,7 +87,6 @@ function getBadgeInlineStyle(color?: string, isCardPhoto = false): React.CSSProp
 
 export default function LinkPortal({ profile, socials, links }: LinkPortalProps) {
   const [copiedEmail, setCopiedEmail] = useState(false);
-  const [clickNotice, setClickNotice] = useState<string | null>(null);
   const [revealedCards, setRevealedCards] = useState<Record<string, boolean>>({});
 
   const safeProfile: ProfileConfig = {
@@ -101,6 +99,8 @@ export default function LinkPortal({ profile, socials, links }: LinkPortalProps)
     showBio: profile?.showBio !== false,
     avatarUrl: profile?.avatarUrl || INITIAL_PROFILE.avatarUrl,
     coverImageUrl: profile?.coverImageUrl || '',
+    coverPosition: profile?.coverPosition || '50% 50%',
+    coverFit: profile?.coverFit || 'cover',
     contactEmail: profile?.contactEmail || INITIAL_PROFILE.contactEmail,
     showContactEmail: profile?.showContactEmail !== false,
   };
@@ -125,11 +125,8 @@ export default function LinkPortal({ profile, socials, links }: LinkPortalProps)
     !coverFailed
   );
 
-  // Track click metric via API asynchronously
+  // Track click metric via API asynchronously in the background
   const handleLinkClick = (id: string, title: string, url: string) => {
-    setClickNotice(`Métrica registrada para: "${title.slice(0, 20)}..."`);
-    setTimeout(() => setClickNotice(null), 2500);
-
     try {
       if (typeof window !== 'undefined') {
         const payload = JSON.stringify({ linkId: id, linkTitle: title, url });
@@ -174,19 +171,6 @@ export default function LinkPortal({ profile, socials, links }: LinkPortalProps)
         <div className="absolute bottom-32 right-0 w-[240px] h-[240px] bg-brand-purple/10 rounded-full blur-3xl translate-x-1/2" />
       </div>
 
-      {/* Real-time Click Metric Toast */}
-      {clickNotice && (
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -20 }}
-          className="fixed top-4 z-50 bg-dark-700/90 border border-brand-pink/40 text-xs text-pink-200 px-4 py-2 rounded-full shadow-glow-pink backdrop-blur-md flex items-center gap-2"
-        >
-          <BarChart3 className="w-3.5 h-3.5 text-brand-pink animate-pulse" />
-          <span>{clickNotice}</span>
-        </motion.div>
-      )}
-
       {/* Main Container - Mobile First Centered Column */}
       <main className="w-full max-w-md px-4 pt-4 z-10 flex flex-col items-center">
         
@@ -197,7 +181,11 @@ export default function LinkPortal({ profile, socials, links }: LinkPortalProps)
             <img
               src={coverSrc}
               alt="Cover"
-              className="absolute inset-0 w-full h-full object-cover object-center filter brightness-90 transition-opacity duration-300"
+              className="absolute inset-0 w-full h-full filter brightness-90 transition-opacity duration-300"
+              style={{
+                objectPosition: safeProfile.coverPosition || '50% 50%',
+                objectFit: safeProfile.coverFit || 'cover',
+              }}
               onError={() => setCoverFailed(true)}
             />
           ) : (
@@ -292,7 +280,11 @@ export default function LinkPortal({ profile, socials, links }: LinkPortalProps)
                           <img
                             src={item.image}
                             alt={item.title}
-                            className="w-full h-full object-cover"
+                            className="w-full h-full"
+                            style={{
+                              objectPosition: item.imagePosition || '50% 50%',
+                              objectFit: item.imageFit || 'cover',
+                            }}
                             onError={(e) => {
                               (e.currentTarget as HTMLElement).style.display = 'none';
                             }}
@@ -335,7 +327,11 @@ export default function LinkPortal({ profile, socials, links }: LinkPortalProps)
                           <img
                             src={item.image}
                             alt={item.title}
-                            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                            className="w-full h-full transition-transform duration-300"
+                            style={{
+                              objectPosition: item.imagePosition || '50% 50%',
+                              objectFit: item.imageFit || 'cover',
+                            }}
                             onError={(e) => {
                               (e.currentTarget as HTMLElement).style.display = 'none';
                             }}
@@ -399,11 +395,15 @@ export default function LinkPortal({ profile, socials, links }: LinkPortalProps)
                       <img
                         src={item.image}
                         alt={item.title}
-                        className={`absolute inset-0 w-full h-full object-cover transition-all duration-500 filter ${
+                        className={`absolute inset-0 w-full h-full transition-all duration-500 filter ${
                           isBlurred
                             ? 'blur-lg scale-110 brightness-75'
                             : 'blur-0 scale-100 brightness-90 group-hover:brightness-100 group-hover:scale-105'
                         }`}
+                        style={{
+                          objectPosition: item.imagePosition || '50% 50%',
+                          objectFit: item.imageFit || 'cover',
+                        }}
                         onError={(e) => {
                           (e.currentTarget as HTMLElement).style.display = 'none';
                         }}
