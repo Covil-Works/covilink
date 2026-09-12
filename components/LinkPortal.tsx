@@ -117,6 +117,49 @@ export default function LinkPortal({ profile, socials, links }: LinkPortalProps)
     }
   }, [safeProfile.avatarUrl, safeProfile.coverImageUrl, safeProfile.name]);
 
+  // Track pageview on mount and maintain anonymous visitor ID
+  useEffect(() => {
+    try {
+      if (typeof window !== 'undefined') {
+        let vid = '';
+        try {
+          vid = localStorage.getItem('covilink_vid') || '';
+          if (!vid) {
+            vid = `v-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+            localStorage.setItem('covilink_vid', vid);
+          }
+        } catch {
+          vid = `v-${Date.now()}`;
+        }
+
+        const sessionKey = 'covilink_pv_sent';
+        if (!sessionStorage.getItem(sessionKey)) {
+          sessionStorage.setItem(sessionKey, '1');
+          const payload = JSON.stringify({
+            type: 'pageview',
+            linkId: 'pageview',
+            linkTitle: 'Visualização do Perfil',
+            url: window.location.href,
+            visitorId: vid,
+          });
+
+          if (navigator.sendBeacon) {
+            navigator.sendBeacon('/api/track', payload);
+          } else {
+            fetch('/api/track', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: payload,
+              keepalive: true,
+            }).catch(() => {});
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Failed to register pageview:', err);
+    }
+  }, []);
+
   const hasCustomCover = Boolean(
     coverSrc &&
     coverSrc.trim() !== '' &&
@@ -128,7 +171,19 @@ export default function LinkPortal({ profile, socials, links }: LinkPortalProps)
   const handleLinkClick = (id: string, title: string, url: string) => {
     try {
       if (typeof window !== 'undefined') {
-        const payload = JSON.stringify({ linkId: id, linkTitle: title, url });
+        let vid = '';
+        try {
+          vid = localStorage.getItem('covilink_vid') || '';
+        } catch {}
+
+        const payload = JSON.stringify({
+          type: 'click',
+          linkId: id,
+          linkTitle: title,
+          url,
+          visitorId: vid,
+        });
+
         if (navigator.sendBeacon) {
           navigator.sendBeacon('/api/track', payload);
         } else {

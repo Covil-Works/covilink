@@ -32,9 +32,11 @@ import {
   Sliders,
   ExternalLink,
   LogOut,
+  AlertTriangle,
+  Calendar,
 } from 'lucide-react';
 import { useAuth, authFetch } from '@/lib/auth-client';
-import { AnalyticsSummary } from '@/lib/analytics';
+import { AnalyticsSummary, TimePeriod } from '@/lib/analytics';
 import { INITIAL_LINKS, LinkItem, SocialLink, INITIAL_PROFILE, ProfileConfig } from '@/lib/links-config';
 import { SocialIcon } from '@/components/SocialIcons';
 import GallerySection from './admin/GallerySection';
@@ -87,6 +89,10 @@ export default function AdminDashboard() {
   const [metrics, setMetrics] = useState<AnalyticsSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<TabType>('metrics');
+  const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>('7d');
+  const [isResetModalOpen, setIsResetModalOpen] = useState(false);
+  const [isResettingMetrics, setIsResettingMetrics] = useState(false);
+  const [resetSuccess, setResetSuccess] = useState(false);
   
   // Profile state
   const [profile, setProfile] = useState<ProfileConfig>(INITIAL_PROFILE);
@@ -139,16 +145,44 @@ export default function AdminDashboard() {
   );
 
   // Fetch metrics from analytics API
-  const fetchMetrics = async () => {
+  const fetchMetrics = async (period: TimePeriod = selectedPeriod) => {
     setLoading(true);
     try {
-      const res = await authFetch('/api/metrics');
+      const res = await authFetch(`/api/metrics?period=${period}`);
       const data = await res.json();
       setMetrics(data);
     } catch (err) {
       console.error('Error fetching metrics:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handlePeriodChange = (period: TimePeriod) => {
+    setSelectedPeriod(period);
+    fetchMetrics(period);
+  };
+
+  const handleResetMetrics = async () => {
+    setIsResettingMetrics(true);
+    try {
+      const res = await authFetch('/api/metrics', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'reset' }),
+      });
+      const data = await res.json();
+      if (data && data.metrics) {
+        setMetrics(data.metrics);
+      }
+      setIsResetModalOpen(false);
+      setResetSuccess(true);
+      setTimeout(() => setResetSuccess(false), 3500);
+    } catch (err) {
+      console.error('Error resetting metrics:', err);
+      alert('Erro ao resetar métricas.');
+    } finally {
+      setIsResettingMetrics(false);
     }
   };
 
@@ -797,30 +831,81 @@ export default function AdminDashboard() {
         {/* TAB 1: METRICS */}
         {activeTab === 'metrics' && (
           <div className="space-y-6">
-            <div className="flex items-center justify-between pb-4 border-b border-white/[0.08]">
+            
+            {/* Header & Controls */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-white/[0.08]">
               <div>
                 <h2 className="text-lg font-bold text-white tracking-tight flex items-center gap-2">
                   <BarChart3 className="w-5 h-5 text-brand-purple" />
                   <span>Métricas & Analytics</span>
                 </h2>
                 <p className="text-xs text-gray-400 mt-1">
-                  Acompanhe cliques e visitantes do seu portal em tempo real.
+                  Acompanhe cliques, conversões e fontes de tráfego em tempo real.
                 </p>
               </div>
 
-              <button
-                type="button"
-                onClick={fetchMetrics}
-                disabled={loading}
-                className="px-3 py-1.5 rounded-xl border border-white/10 hover:bg-white/5 text-xs font-medium text-gray-300 hover:text-white flex items-center gap-1.5 transition"
-              >
-                <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-                <span>Atualizar</span>
-              </button>
+              <div className="flex flex-wrap items-center gap-2">
+                {/* Period Selector Pills */}
+                <div className="flex items-center p-1 bg-white/5 border border-white/10 rounded-xl">
+                  {(
+                    [
+                      { id: 'today', label: 'Hoje' },
+                      { id: '7d', label: '7 Dias' },
+                      { id: '30d', label: '30 Dias' },
+                      { id: 'all', label: 'Tudo' },
+                    ] as const
+                  ).map((p) => (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => handlePeriodChange(p.id)}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-medium transition ${
+                        selectedPeriod === p.id
+                          ? 'bg-brand-purple text-white shadow-sm'
+                          : 'text-gray-400 hover:text-white'
+                      }`}
+                    >
+                      {p.label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Refresh Button */}
+                <button
+                  type="button"
+                  onClick={() => fetchMetrics(selectedPeriod)}
+                  disabled={loading}
+                  title="Atualizar dados"
+                  className="px-3 py-1.5 rounded-xl border border-white/10 hover:bg-white/5 text-xs font-medium text-gray-300 hover:text-white flex items-center gap-1.5 transition"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+                  <span className="hidden sm:inline">Atualizar</span>
+                </button>
+
+                {/* Reset Metrics Button */}
+                <button
+                  type="button"
+                  onClick={() => setIsResetModalOpen(true)}
+                  title="Zerar histórico de métricas"
+                  className="px-3 py-1.5 rounded-xl border border-rose-500/20 bg-rose-500/10 hover:bg-rose-500/20 text-xs font-medium text-rose-300 hover:text-rose-200 flex items-center gap-1.5 transition cursor-pointer"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Zerar</span>
+                </button>
+              </div>
             </div>
+
+            {/* Reset Success Feedback */}
+            {resetSuccess && (
+              <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-xs flex items-center gap-2">
+                <Check className="w-4 h-4 text-emerald-400" />
+                <span>Todas as métricas foram zeradas com sucesso!</span>
+              </div>
+            )}
 
             {/* Metrics Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+              {/* Card 1: Total Clicks */}
               <div className="rounded-2xl p-4 border border-white/[0.08] bg-[#0e1017]">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-[11px] font-medium text-gray-400 uppercase tracking-wider">Total de Cliques</span>
@@ -831,59 +916,123 @@ export default function AdminDashboard() {
                 </div>
                 <div className="flex items-center gap-1 text-[11px] text-brand-pink mt-1 font-medium">
                   <TrendingUp className="w-3 h-3" />
-                  <span>Cliques registrados</span>
+                  <span>Cliques registrados no período</span>
                 </div>
               </div>
 
+              {/* Card 2: Page Views */}
+              <div className="rounded-2xl p-4 border border-white/[0.08] bg-[#0e1017]">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[11px] font-medium text-gray-400 uppercase tracking-wider">Visualizações</span>
+                  <Eye className="w-4 h-4 text-brand-purple" />
+                </div>
+                <div className="text-2xl font-bold text-white tracking-tight">
+                  {loading ? '...' : metrics?.totalPageViews || 0}
+                </div>
+                <div className="text-[11px] text-gray-400 mt-1">
+                  Acessos à página pública
+                </div>
+              </div>
+
+              {/* Card 3: Real CTR */}
+              <div className="rounded-2xl p-4 border border-white/[0.08] bg-[#0e1017]">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[11px] font-medium text-gray-400 uppercase tracking-wider">Taxa de Cliques (CTR)</span>
+                  <TrendingUp className="w-4 h-4 text-emerald-400" />
+                </div>
+                <div className="text-2xl font-bold text-white tracking-tight">
+                  {loading ? '...' : `${metrics?.ctr ?? 0}%`}
+                </div>
+                <div className="text-[11px] text-emerald-400 mt-1 font-medium">
+                  Cliques reais por visualização
+                </div>
+              </div>
+
+              {/* Card 4: Unique Visitors */}
               <div className="rounded-2xl p-4 border border-white/[0.08] bg-[#0e1017]">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-[11px] font-medium text-gray-400 uppercase tracking-wider">Visitantes Únicos</span>
-                  <Users className="w-4 h-4 text-brand-purple" />
+                  <Users className="w-4 h-4 text-brand-cyan" />
                 </div>
                 <div className="text-2xl font-bold text-white tracking-tight">
                   {loading ? '...' : metrics?.uniqueVisitors || 0}
                 </div>
                 <div className="text-[11px] text-gray-400 mt-1">
-                  Estimativa por sessão
+                  Sessões distintas no período
                 </div>
+              </div>
+            </div>
+
+            {/* Visual Timeline Bar Chart */}
+            <div className="rounded-2xl p-5 border border-white/[0.08] bg-[#0e1017] space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-semibold text-white">Atividade no Período</h3>
+                  <p className="text-[11px] text-gray-400 mt-0.5">
+                    {selectedPeriod === 'today' && 'Distribuição por horário (últimas 24h)'}
+                    {selectedPeriod === '7d' && 'Volume diário (últimos 7 dias)'}
+                    {selectedPeriod === '30d' && 'Evolução nos últimos 30 dias'}
+                    {selectedPeriod === 'all' && 'Histórico acumulado de acessos'}
+                  </p>
+                </div>
+                {metrics?.topPerformingLink && (
+                  <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/5 border border-white/10 text-[11px] text-gray-300">
+                    <Zap className="w-3 h-3 text-brand-cyan" />
+                    <span>Top: <strong className="text-white">{metrics.topPerformingLink.title}</strong></span>
+                  </div>
+                )}
               </div>
 
-              <div className="rounded-2xl p-4 border border-white/[0.08] bg-[#0e1017]">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-[11px] font-medium text-gray-400 uppercase tracking-wider">Top Link</span>
-                  <Zap className="w-4 h-4 text-brand-cyan" />
+              {/* Chart Bars */}
+              {metrics && metrics.clicksTimeline && metrics.clicksTimeline.length > 0 ? (
+                (() => {
+                  const maxClicks = Math.max(1, ...metrics.clicksTimeline.map((t) => t.clicks));
+                  return (
+                    <div className="pt-4 pb-2">
+                      <div className="h-32 flex items-end gap-2 sm:gap-3 justify-between">
+                        {metrics.clicksTimeline.map((item, idx) => {
+                          const heightPct = Math.max(8, Math.round((item.clicks / maxClicks) * 100));
+                          return (
+                            <div key={idx} className="flex-1 flex flex-col items-center gap-2 group h-full justify-end">
+                              <div className="text-[10px] font-mono text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity">
+                                {item.clicks}
+                              </div>
+                              <div className="w-full max-w-[42px] bg-white/5 rounded-t-lg overflow-hidden flex flex-col justify-end h-full">
+                                <div
+                                  className={`w-full rounded-t-lg transition-all duration-500 ${
+                                    item.clicks > 0
+                                      ? 'bg-gradient-to-t from-brand-purple to-brand-pink shadow-glow-pink'
+                                      : 'bg-white/10'
+                                  }`}
+                                  style={{ height: `${heightPct}%` }}
+                                />
+                              </div>
+                              <span className="text-[9px] sm:text-[10px] text-gray-400 truncate max-w-full text-center">
+                                {item.time}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })()
+              ) : (
+                <div className="py-8 text-center text-xs text-gray-500">
+                  Nenhum dado de timeline disponível para o período selecionado.
                 </div>
-                <div className="text-sm font-bold text-white truncate">
-                  {loading ? '...' : metrics?.topPerformingLink?.title || 'Nenhum ainda'}
-                </div>
-                <div className="text-[11px] text-gray-400 mt-1">
-                  {metrics?.topPerformingLink ? `${metrics.topPerformingLink.clicks} cliques` : '-'}
-                </div>
-              </div>
-
-              <div className="rounded-2xl p-4 border border-white/[0.08] bg-[#0e1017]">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-[11px] font-medium text-gray-400 uppercase tracking-wider">Engajamento</span>
-                  <TrendingUp className="w-4 h-4 text-emerald-400" />
-                </div>
-                <div className="text-2xl font-bold text-white tracking-tight">
-                  84.2%
-                </div>
-                <div className="text-[11px] text-emerald-400 mt-1 font-medium">
-                  Taxa de conversão visual
-                </div>
-              </div>
+              )}
             </div>
 
             {/* Tables & Breakdowns */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               
-              {/* Clicks Table */}
+              {/* Clicks Table (2 cols on lg) */}
               <div className="lg:col-span-2 rounded-2xl p-5 border border-white/[0.08] bg-[#0e1017]">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-sm font-semibold text-white">Cliques por Link</h3>
                   <span className="text-[11px] text-gray-400">
-                    {metrics ? Object.keys(metrics.clicksByLink).length : 0} links rastreados
+                    {metrics ? Object.keys(metrics.clicksByLink).length : 0} links com cliques
                   </span>
                 </div>
 
@@ -891,7 +1040,7 @@ export default function AdminDashboard() {
                   <table className="w-full text-left text-xs">
                     <thead>
                       <tr className="border-b border-white/[0.08] text-gray-400 font-medium">
-                        <th className="pb-2.5">Link</th>
+                        <th className="pb-2.5">Link / Botão</th>
                         <th className="pb-2.5 text-center">Cliques</th>
                         <th className="pb-2.5 text-right">Participação</th>
                       </tr>
@@ -911,7 +1060,7 @@ export default function AdminDashboard() {
                                   <div className="font-medium text-white truncate max-w-xs">{item.title}</div>
                                   <div className="text-[10px] text-gray-500 truncate max-w-xs">{item.url}</div>
                                 </td>
-                                <td className="py-2.5 px-2 text-center font-bold text-brand-pink">
+                                <td className="py-2.5 px-2 text-center font-bold text-brand-pink font-mono">
                                   {item.clicks}
                                 </td>
                                 <td className="py-2.5 pl-2 text-right">
@@ -931,7 +1080,7 @@ export default function AdminDashboard() {
                       ) : (
                         <tr>
                           <td colSpan={3} className="py-6 text-center text-gray-500">
-                            Nenhum clique registrado ainda.
+                            Nenhum clique registrado no período selecionado.
                           </td>
                         </tr>
                       )}
@@ -940,94 +1089,176 @@ export default function AdminDashboard() {
                 </div>
               </div>
 
-              {/* Device Breakdown */}
-              <div className="rounded-2xl p-5 border border-white/[0.08] bg-[#0e1017] space-y-4">
-                <div>
-                  <h3 className="text-sm font-semibold text-white">Dispositivos</h3>
-                  <p className="text-[11px] text-gray-400 mt-0.5">Origem dos acessos</p>
+              {/* Traffic Sources & Devices Column (1 col on lg) */}
+              <div className="space-y-6">
+                
+                {/* Traffic Sources (Referrers) */}
+                <div className="rounded-2xl p-5 border border-white/[0.08] bg-[#0e1017] space-y-4">
+                  <div>
+                    <h3 className="text-sm font-semibold text-white">Origem do Tráfego</h3>
+                    <p className="text-[11px] text-gray-400 mt-0.5">De onde vieram os acessos</p>
+                  </div>
+
+                  {metrics && metrics.referrersBreakdown && metrics.referrersBreakdown.length > 0 ? (
+                    <div className="space-y-3 pt-1">
+                      {metrics.referrersBreakdown.map((ref) => (
+                        <div key={ref.name}>
+                          <div className="flex justify-between text-xs mb-1">
+                            <span className="text-gray-300 font-medium">{ref.name}</span>
+                            <span className="font-bold text-white font-mono">{ref.count} ({ref.percentage}%)</span>
+                          </div>
+                          <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-brand-purple rounded-full"
+                              style={{ width: `${ref.percentage}%` }}
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-gray-500 py-3 text-center">Nenhuma origem registrada ainda.</p>
+                  )}
                 </div>
 
-                {metrics && (
-                  <div className="space-y-3 pt-1">
-                    <div>
-                      <div className="flex justify-between text-xs mb-1">
-                        <span className="flex items-center gap-1.5 text-gray-300">
-                          <Smartphone className="w-3.5 h-3.5 text-brand-pink" /> Mobile
-                        </span>
-                        <span className="font-bold text-white">
-                          {metrics.totalClicks > 0
-                            ? Math.round((metrics.deviceBreakdown.mobile / metrics.totalClicks) * 100)
-                            : 0}%
-                        </span>
-                      </div>
-                      <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-brand-pink rounded-full"
-                          style={{
-                            width: `${
-                              metrics.totalClicks > 0
-                                ? (metrics.deviceBreakdown.mobile / metrics.totalClicks) * 100
-                                : 0
-                            }%`,
-                          }}
-                        />
-                      </div>
-                    </div>
-
-                    <div>
-                      <div className="flex justify-between text-xs mb-1">
-                        <span className="flex items-center gap-1.5 text-gray-300">
-                          <Monitor className="w-3.5 h-3.5 text-brand-cyan" /> Desktop
-                        </span>
-                        <span className="font-bold text-white">
-                          {metrics.totalClicks > 0
-                            ? Math.round((metrics.deviceBreakdown.desktop / metrics.totalClicks) * 100)
-                            : 0}%
-                        </span>
-                      </div>
-                      <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-brand-cyan rounded-full"
-                          style={{
-                            width: `${
-                              metrics.totalClicks > 0
-                                ? (metrics.deviceBreakdown.desktop / metrics.totalClicks) * 100
-                                : 0
-                            }%`,
-                          }}
-                        />
-                      </div>
-                    </div>
-
-                    <div>
-                      <div className="flex justify-between text-xs mb-1">
-                        <span className="flex items-center gap-1.5 text-gray-300">
-                          <Tablet className="w-3.5 h-3.5 text-brand-purple" /> Tablet
-                        </span>
-                        <span className="font-bold text-white">
-                          {metrics.totalClicks > 0
-                            ? Math.round((metrics.deviceBreakdown.tablet / metrics.totalClicks) * 100)
-                            : 0}%
-                        </span>
-                      </div>
-                      <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-brand-purple rounded-full"
-                          style={{
-                            width: `${
-                              metrics.totalClicks > 0
-                                ? (metrics.deviceBreakdown.tablet / metrics.totalClicks) * 100
-                                : 0
-                            }%`,
-                          }}
-                        />
-                      </div>
-                    </div>
+                {/* Device Breakdown */}
+                <div className="rounded-2xl p-5 border border-white/[0.08] bg-[#0e1017] space-y-4">
+                  <div>
+                    <h3 className="text-sm font-semibold text-white">Dispositivos</h3>
+                    <p className="text-[11px] text-gray-400 mt-0.5">Plataforma dos visitantes</p>
                   </div>
-                )}
+
+                  {metrics && (
+                    <div className="space-y-3 pt-1">
+                      <div>
+                        <div className="flex justify-between text-xs mb-1">
+                          <span className="flex items-center gap-1.5 text-gray-300">
+                            <Smartphone className="w-3.5 h-3.5 text-brand-pink" /> Mobile
+                          </span>
+                          <span className="font-bold text-white font-mono">
+                            {metrics.totalClicks > 0
+                              ? Math.round((metrics.deviceBreakdown.mobile / (metrics.totalClicks + metrics.totalPageViews || 1)) * 100)
+                              : 0}%
+                          </span>
+                        </div>
+                        <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-brand-pink rounded-full"
+                            style={{
+                              width: `${
+                                (metrics.totalClicks + metrics.totalPageViews) > 0
+                                  ? Math.min(100, Math.round((metrics.deviceBreakdown.mobile / (metrics.totalClicks + metrics.totalPageViews)) * 100))
+                                  : 0
+                              }%`,
+                            }}
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <div className="flex justify-between text-xs mb-1">
+                          <span className="flex items-center gap-1.5 text-gray-300">
+                            <Monitor className="w-3.5 h-3.5 text-brand-cyan" /> Desktop
+                          </span>
+                          <span className="font-bold text-white font-mono">
+                            {(metrics.totalClicks + metrics.totalPageViews) > 0
+                              ? Math.round((metrics.deviceBreakdown.desktop / (metrics.totalClicks + metrics.totalPageViews)) * 100)
+                              : 0}%
+                          </span>
+                        </div>
+                        <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-brand-cyan rounded-full"
+                            style={{
+                              width: `${
+                                (metrics.totalClicks + metrics.totalPageViews) > 0
+                                  ? Math.min(100, Math.round((metrics.deviceBreakdown.desktop / (metrics.totalClicks + metrics.totalPageViews)) * 100))
+                                  : 0
+                              }%`,
+                            }}
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <div className="flex justify-between text-xs mb-1">
+                          <span className="flex items-center gap-1.5 text-gray-300">
+                            <Tablet className="w-3.5 h-3.5 text-brand-purple" /> Tablet
+                          </span>
+                          <span className="font-bold text-white font-mono">
+                            {(metrics.totalClicks + metrics.totalPageViews) > 0
+                              ? Math.round((metrics.deviceBreakdown.tablet / (metrics.totalClicks + metrics.totalPageViews)) * 100)
+                              : 0}%
+                          </span>
+                        </div>
+                        <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-brand-purple rounded-full"
+                            style={{
+                              width: `${
+                                (metrics.totalClicks + metrics.totalPageViews) > 0
+                                  ? Math.min(100, Math.round((metrics.deviceBreakdown.tablet / (metrics.totalClicks + metrics.totalPageViews)) * 100))
+                                  : 0
+                              }%`,
+                            }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
               </div>
 
             </div>
+
+            {/* Modal de Confirmação para Limpar/Zerar Métricas */}
+            {isResetModalOpen && (
+              <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+                <div className="bg-[#0e1017] border border-white/15 rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4">
+                  <div className="w-12 h-12 rounded-2xl bg-rose-500/10 border border-rose-500/25 flex items-center justify-center text-rose-400 mx-auto">
+                    <AlertTriangle className="w-6 h-6" />
+                  </div>
+                  
+                  <div className="text-center space-y-1.5">
+                    <h3 className="text-base font-bold text-white">Zerar todas as métricas?</h3>
+                    <p className="text-xs text-gray-400 leading-relaxed">
+                      Esta ação apagará permanentemente o histórico de cliques, visualizações e canais de tráfego salvos no banco de dados e localmente. Esta ação não poderá ser desfeita.
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-3 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setIsResetModalOpen(false)}
+                      disabled={isResettingMetrics}
+                      className="flex-1 py-2.5 rounded-xl border border-white/10 hover:bg-white/5 text-xs font-medium text-gray-300 transition"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleResetMetrics}
+                      disabled={isResettingMetrics}
+                      className="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition flex items-center justify-center gap-2 shadow-lg shadow-rose-600/25 cursor-pointer"
+                    >
+                      {isResettingMetrics ? (
+                        <>
+                          <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                          <span>Limpando...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span>Sim, Zerar Tudo</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
           </div>
         )}
 

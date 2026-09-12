@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAnalyticsSummary, resetAnalyticsData } from '@/lib/analytics';
+import { getAnalyticsSummary, resetAnalyticsData, TimePeriod } from '@/lib/analytics';
 import { verifyAuth, unauthorizedResponse } from '@/lib/auth-server';
 
 export const dynamic = 'force-dynamic';
@@ -11,7 +11,14 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const metrics = await getAnalyticsSummary();
+    const { searchParams } = new URL(req.url);
+    const periodParam = searchParams.get('period') as TimePeriod | null;
+    const period: TimePeriod =
+      periodParam === 'today' || periodParam === '7d' || periodParam === '30d' || periodParam === 'all'
+        ? periodParam
+        : '7d';
+
+    const metrics = await getAnalyticsSummary(period);
     return NextResponse.json(metrics);
   } catch (error) {
     console.error('Error fetching analytics:', error);
@@ -28,8 +35,8 @@ export async function POST(req: NextRequest) {
   try {
     const { action } = await req.json();
     if (action === 'reset') {
-      resetAnalyticsData();
-      const updated = await getAnalyticsSummary();
+      await resetAnalyticsData();
+      const updated = await getAnalyticsSummary('7d');
       return NextResponse.json({ success: true, metrics: updated });
     }
     return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
