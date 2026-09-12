@@ -10,6 +10,7 @@ export interface LinkItem {
   category?: 'mentorship' | 'social' | 'product' | 'content' | 'contact' | 'custom';
   gridSpan?: 'full' | 'half';
   active: boolean;
+  hasBlur?: boolean;
 }
 
 export interface SocialLink {

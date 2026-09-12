@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import { isNeonDatabaseConnected, queryDb } from './db';
 
 export interface ClickEvent {
   id: string;
@@ -33,60 +34,24 @@ export interface AnalyticsSummary {
 
 const DATA_FILE = path.join(process.cwd(), '.next', 'covilink-analytics.json');
 
-// Memory cache fallback for fast access
+// Memory cache fallback
 let memoryClicks: ClickEvent[] = [];
-
-// Seed realistic prototype metrics if data file doesn't exist
-function getInitialSeedEvents(): ClickEvent[] {
-  const now = new Date();
-  const seed: ClickEvent[] = [];
-  const linkTargets = [
-    { id: 'link-mentor-call', title: 'Agendar Chamada de Mentoria VIP!', url: 'https://calendly.com' },
-    { id: 'link-indigo-beauty', title: 'Programa Indigo Alien Beauty 🌌👽', url: 'https://example.com/indigo-beauty' },
-    { id: 'link-bombshell-glam', title: 'Bombshell Glam Program', url: 'https://example.com/bombshell' },
-    { id: 'link-kr-media', title: 'KR Media: Mentorship & Programs', url: 'https://example.com/kr-media' },
-    { id: 'link-ko-art', title: 'Galeria Ko-Art 🎨', url: 'https://example.com/ko-art' },
-    { id: 'link-calendars-merch', title: 'Calendários & Merch Oficial', url: 'https://example.com/merch' },
-    { id: 'soc-1', title: 'Instagram Profile', url: 'https://instagram.com' },
-  ];
-
-  const devices: ('mobile' | 'desktop' | 'tablet')[] = ['mobile', 'mobile', 'mobile', 'desktop', 'tablet'];
-  const browsers = ['Safari', 'Chrome', 'Firefox', 'Mobile Safari'];
-
-  // Create 128 realistic historical clicks over the past 24 hours
-  for (let i = 0; i < 128; i++) {
-    const minutesAgo = Math.floor(Math.random() * 1440);
-    const link = linkTargets[Math.floor(Math.random() * linkTargets.length)];
-    const time = new Date(now.getTime() - minutesAgo * 60 * 1000);
-
-    seed.push({
-      id: `evt-${i + 1}`,
-      linkId: link.id,
-      linkTitle: link.title,
-      url: link.url,
-      timestamp: time.toISOString(),
-      device: devices[Math.floor(Math.random() * devices.length)],
-      browser: browsers[Math.floor(Math.random() * browsers.length)],
-      referrer: Math.random() > 0.4 ? 'Instagram Bio' : 'Direct / Search',
-    });
-  }
-
-  return seed.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-}
 
 function loadAnalyticsFromFile(): ClickEvent[] {
   if (memoryClicks.length > 0) return memoryClicks;
   try {
     if (fs.existsSync(DATA_FILE)) {
       const content = fs.readFileSync(DATA_FILE, 'utf-8');
-      memoryClicks = JSON.parse(content);
-      return memoryClicks;
+      const parsed = JSON.parse(content);
+      if (Array.isArray(parsed)) {
+        memoryClicks = parsed;
+        return memoryClicks;
+      }
     }
   } catch (err) {
     console.error('Error reading analytics file:', err);
   }
-  memoryClicks = getInitialSeedEvents();
-  saveAnalyticsToFile(memoryClicks);
+  memoryClicks = [];
   return memoryClicks;
 }
 
@@ -102,10 +67,11 @@ function saveAnalyticsToFile(clicks: ClickEvent[]): void {
   }
 }
 
-export function isNeonDatabaseConnected(): boolean {
-  return Boolean(process.env.DATABASE_URL && process.env.DATABASE_URL.length > 10);
-}
+export { isNeonDatabaseConnected };
 
+/**
+ * Registra um clique no PostgreSQL (se conectado) e no cache local.
+ */
 export async function trackClick(event: Omit<ClickEvent, 'id' | 'timestamp'>): Promise<ClickEvent> {
   const newEvent: ClickEvent = {
     id: `evt-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
@@ -114,8 +80,25 @@ export async function trackClick(event: Omit<ClickEvent, 'id' | 'timestamp'>): P
   };
 
   if (isNeonDatabaseConnected()) {
-    // Note: When DATABASE_URL is provided, we execute SQL query directly to Neon DB.
-    // For now, write to active store and memory.
+    try {
+      await queryDb(
+        `INSERT INTO click_events (
+          id, link_id, link_title, url, device, browser, referrer, timestamp
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8);`,
+        [
+          newEvent.id,
+          newEvent.linkId,
+          newEvent.linkTitle,
+          newEvent.url,
+          newEvent.device,
+          newEvent.browser,
+          newEvent.referrer,
+          newEvent.timestamp,
+        ]
+      );
+    } catch (dbError) {
+      console.error('[DB] Error inserting click_event to database:', dbError);
+    }
   }
 
   const clicks = loadAnalyticsFromFile();
@@ -126,14 +109,42 @@ export async function trackClick(event: Omit<ClickEvent, 'id' | 'timestamp'>): P
   return newEvent;
 }
 
+/**
+ * Retorna o resumo consolidado de métricas (do PostgreSQL ou local).
+ */
 export async function getAnalyticsSummary(): Promise<AnalyticsSummary> {
-  const clicks = loadAnalyticsFromFile();
-
   const isDbConnected = isNeonDatabaseConnected();
-  const totalClicks = clicks.length;
+  let clicks: ClickEvent[] = [];
 
-  // Approximate unique visitors based on combination of timestamp window and device/browser
-  const uniqueVisitors = Math.round(totalClicks * 0.72);
+  if (isDbConnected) {
+    try {
+      const rows = await queryDb<any>(
+        `SELECT id, link_id, link_title, url, device, browser, referrer, timestamp 
+         FROM click_events 
+         ORDER BY timestamp DESC 
+         LIMIT 500;`
+      );
+
+      clicks = (rows || []).map((row) => ({
+        id: String(row.id),
+        linkId: String(row.link_id),
+        linkTitle: String(row.link_title || row.link_id),
+        url: String(row.url || ''),
+        timestamp: row.timestamp ? new Date(row.timestamp).toISOString() : new Date().toISOString(),
+        device: (row.device === 'desktop' || row.device === 'tablet') ? row.device : 'mobile',
+        browser: String(row.browser || 'Chrome'),
+        referrer: String(row.referrer || 'Direto'),
+      }));
+    } catch (dbError) {
+      console.error('[DB] Error fetching click_events from database:', dbError);
+      clicks = loadAnalyticsFromFile();
+    }
+  } else {
+    clicks = loadAnalyticsFromFile();
+  }
+
+  const totalClicks = clicks.length;
+  const uniqueVisitors = totalClicks > 0 ? Math.max(1, Math.round(totalClicks * 0.72)) : 0;
 
   // Links breakdown
   const clicksByLink: Record<string, { id: string; title: string; clicks: number; url: string }> = {};
@@ -141,7 +152,7 @@ export async function getAnalyticsSummary(): Promise<AnalyticsSummary> {
 
   clicks.forEach((c) => {
     // Device count
-    if (deviceBreakdown[c.device] !== undefined) {
+    if (c.device === 'desktop' || c.device === 'tablet' || c.device === 'mobile') {
       deviceBreakdown[c.device]++;
     } else {
       deviceBreakdown.mobile++;
@@ -187,12 +198,14 @@ export async function getAnalyticsSummary(): Promise<AnalyticsSummary> {
   clicks.forEach((c) => {
     const date = new Date(c.timestamp);
     const diffHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
-    if (diffHours <= 12) {
-      const timeLabel = date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-      // Find closest hour slot
+    if (diffHours <= 12 && diffHours >= 0) {
       const slots = Object.keys(timelineMap);
       if (slots.length > 0) {
-        timelineMap[slots[Math.floor(slots.length - 1 - (diffHours / 12) * slots.length)] || slots[0]]++;
+        const index = Math.min(slots.length - 1, Math.max(0, Math.floor(slots.length - 1 - (diffHours / 12) * slots.length)));
+        const targetSlot = slots[index];
+        if (targetSlot) {
+          timelineMap[targetSlot] = (timelineMap[targetSlot] || 0) + 1;
+        }
       }
     }
   });
@@ -214,7 +227,18 @@ export async function getAnalyticsSummary(): Promise<AnalyticsSummary> {
   };
 }
 
-export function resetAnalyticsData(): void {
-  memoryClicks = getInitialSeedEvents();
+/**
+ * Reseta os dados analíticos no PostgreSQL e localmente.
+ */
+export async function resetAnalyticsData(): Promise<void> {
+  if (isNeonDatabaseConnected()) {
+    try {
+      await queryDb('DELETE FROM click_events;');
+    } catch (dbError) {
+      console.error('[DB] Error clearing click_events table:', dbError);
+    }
+  }
+
+  memoryClicks = [];
   saveAnalyticsToFile(memoryClicks);
 }
