@@ -1,8 +1,7 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import {
   BarChart3,
   TrendingUp,
@@ -11,45 +10,37 @@ import {
   Smartphone,
   Monitor,
   Tablet,
-  Database,
   RefreshCw,
   Eye,
   EyeOff,
-  CheckCircle2,
   ArrowLeft,
-  Layers,
   Sparkles,
   RotateCcw,
   Zap,
   Globe,
   Plus,
   Trash2,
-  Save,
   ArrowUp,
   ArrowDown,
-  ExternalLink,
-  FileCode,
-  Check,
   User,
   Image as ImageIcon,
-  ArrowUpDown,
   Edit3,
   LayoutList,
-  UploadCloud,
-  Upload,
-  FolderOpen,
-  X,
+  Check,
   Crop,
+  Layers,
   Sliders,
-  ZoomIn,
-  ZoomOut,
-  Move
+  ExternalLink,
 } from 'lucide-react';
 import { AnalyticsSummary } from '@/lib/analytics';
 import { INITIAL_LINKS, LinkItem, SocialLink, INITIAL_PROFILE, ProfileConfig } from '@/lib/links-config';
 import { SocialIcon } from '@/components/SocialIcons';
+import GallerySection from './admin/GallerySection';
+import GalleryPickerModal from './admin/GalleryPickerModal';
+import ImageCropModal from './admin/ImageCropModal';
+import GlobalSaveButton from './admin/GlobalSaveButton';
 
-type TabType = 'metrics' | 'profile' | 'socials' | 'buttons' | 'reorder';
+type TabType = 'metrics' | 'profile' | 'gallery' | 'socials' | 'buttons';
 
 const PLATFORM_OPTIONS: { label: string; value: SocialLink['platform'] }[] = [
   { label: 'Instagram', value: 'instagram' },
@@ -74,1014 +65,21 @@ const PLATFORM_OPTIONS: { label: string; value: SocialLink['platform'] }[] = [
 
 const BUTTON_TYPE_OPTIONS: { label: string; value: LinkItem['type']; description: string }[] = [
   { label: 'Botão Sem Foto', value: 'no-photo', description: 'Botão simples com título, subtítulo e link' },
-  { label: 'Botão com Foto na Esquerda (Miniatura)', value: 'left-thumb', description: 'Foto miniatura na esquerda, título e subtítulo ao lado' },
+  { label: 'Botão com Miniatura na Esquerda', value: 'left-thumb', description: 'Foto miniatura na esquerda, título e subtítulo ao lado' },
   { label: 'Botão com Foto em Destaque (Card)', value: 'card-photo', description: 'Card visual grande com imagem de fundo' },
-  { label: 'Botão Chamada VIP (Mentoria)', value: 'cta-primary', description: 'Botão de destaque principal com fundo claro/brilhante' },
+  { label: 'Botão Chamada VIP (Mentoria)', value: 'cta-primary', description: 'Botão de destaque principal com brilho suave' },
 ];
 
 const BADGE_COLOR_OPTIONS = [
-  { id: 'pink', label: 'Rosa (Padrão)', hex: '#ff3b94', bgClass: 'bg-[#ff3b94]' },
-  { id: 'purple', label: 'Roxo Neon', hex: '#9333ea', bgClass: 'bg-[#9333ea]' },
-  { id: 'cyan', label: 'Azul / Ciano', hex: '#06b6d4', bgClass: 'bg-[#06b6d4]' },
+  { id: 'pink', label: 'Rosa', hex: '#ff3b94', bgClass: 'bg-[#ff3b94]' },
+  { id: 'purple', label: 'Roxo', hex: '#9333ea', bgClass: 'bg-[#9333ea]' },
+  { id: 'cyan', label: 'Ciano', hex: '#06b6d4', bgClass: 'bg-[#06b6d4]' },
   { id: 'emerald', label: 'Verde', hex: '#10b981', bgClass: 'bg-[#10b981]' },
-  { id: 'amber', label: 'Dourado / Âmbar', hex: '#f59e0b', bgClass: 'bg-[#f59e0b]' },
+  { id: 'amber', label: 'Âmbar', hex: '#f59e0b', bgClass: 'bg-[#f59e0b]' },
   { id: 'rose', label: 'Vermelho', hex: '#e11d48', bgClass: 'bg-[#e11d48]' },
   { id: 'white', label: 'Branco', hex: '#ffffff', bgClass: 'bg-[#ffffff]' },
-  { id: 'dark', label: 'Preto / Grafite', hex: '#18181b', bgClass: 'bg-[#18181b]' },
+  { id: 'dark', label: 'Grafite', hex: '#18181b', bgClass: 'bg-[#18181b]' },
 ];
-
-interface UploadedImageItem {
-  name: string;
-  url: string;
-  size: number;
-  updatedAt: number;
-}
-
-function MediaGalleryModal({
-  isOpen,
-  onClose,
-  onSelect,
-  currentUrl,
-}: {
-  isOpen: boolean;
-  onClose: () => void;
-  onSelect: (url: string) => void;
-  currentUrl?: string;
-}) {
-  const [images, setImages] = useState<UploadedImageItem[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const fileInputRef = React.useRef<HTMLInputElement>(null);
-
-  const fetchImages = async () => {
-    setLoading(true);
-    try {
-      const res = await fetch('/api/upload');
-      const data = await res.json();
-      if (data && Array.isArray(data.images)) {
-        setImages(data.images);
-      }
-    } catch (err) {
-      console.error('Error fetching gallery:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (isOpen) {
-      fetchImages();
-    }
-  }, [isOpen]);
-
-  const handleUploadNew = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (file.size > 15 * 1024 * 1024) {
-      alert('A imagem é muito grande (máximo 15MB).');
-      return;
-    }
-
-    setUploading(true);
-    const formData = new FormData();
-    formData.append('file', file);
-
-    try {
-      const res = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData,
-      });
-      const data = await res.json();
-      if (res.ok && data.success && data.url) {
-        onSelect(data.url);
-        onClose();
-      } else {
-        alert(data.error || 'Erro ao enviar imagem.');
-      }
-    } catch (err) {
-      console.error('Upload error:', err);
-      alert('Erro ao enviar imagem.');
-    } finally {
-      setUploading(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
-    }
-  };
-
-  const handleDeleteImage = async (img: UploadedImageItem, e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!confirm(`Excluir permanentemente a imagem "${img.name}" do disco?`)) return;
-
-    try {
-      const res = await fetch(`/api/upload?filename=${encodeURIComponent(img.name)}`, {
-        method: 'DELETE',
-      });
-      const data = await res.json();
-      if (res.ok && data.success) {
-        setImages((prev) => prev.filter((item) => item.name !== img.name));
-      } else {
-        alert(data.error || 'Erro ao excluir a imagem.');
-      }
-    } catch (err) {
-      console.error('Delete error:', err);
-      alert('Erro ao excluir a imagem.');
-    }
-  };
-
-  if (!isOpen) return null;
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-      <div className="bg-[#0f111a] border border-white/15 rounded-2xl w-full max-w-2xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
-        
-        {/* Header */}
-        <div className="p-4 border-b border-white/10 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <ImageIcon className="w-5 h-5 text-brand-cyan" />
-            <div>
-              <h3 className="text-sm font-bold text-white">Galeria de Imagens do Site</h3>
-              <p className="text-[11px] text-gray-400">Escolha uma imagem já enviada ou suba uma nova</p>
-            </div>
-          </div>
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-
-        {/* Action bar */}
-        <div className="p-3 bg-white/5 border-b border-white/10 flex items-center justify-between gap-3">
-          <span className="text-xs text-gray-400 font-medium">
-            {images.length} {images.length === 1 ? 'imagem salva' : 'imagens salvas'} no diretório <code className="text-gray-300">public/uploads/</code>
-          </span>
-
-          <input
-            type="file"
-            ref={fileInputRef}
-            onChange={handleUploadNew}
-            accept="image/png,image/jpeg,image/jpg,image/webp,image/gif,image/svg+xml,image/avif"
-            className="hidden"
-          />
-
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={fetchImages}
-              disabled={loading}
-              className="p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 hover:text-white transition"
-              title="Atualizar lista"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-            </button>
-
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={uploading}
-              className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-brand-cyan to-brand-purple text-white font-bold text-xs hover:opacity-90 flex items-center gap-1.5 transition disabled:opacity-50 shadow-md"
-            >
-              {uploading ? (
-                <>
-                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                  <span>Enviando...</span>
-                </>
-              ) : (
-                <>
-                  <UploadCloud className="w-3.5 h-3.5" />
-                  <span>Subir Nova Imagem</span>
-                </>
-              )}
-            </button>
-          </div>
-        </div>
-
-        {/* Gallery Grid Content */}
-        <div className="p-4 overflow-y-auto max-h-[55vh] flex-1">
-          {loading && images.length === 0 ? (
-            <div className="py-12 flex flex-col items-center justify-center text-gray-400 gap-2">
-              <RefreshCw className="w-6 h-6 animate-spin text-brand-cyan" />
-              <span className="text-xs">Carregando galeria...</span>
-            </div>
-          ) : images.length === 0 ? (
-            <div className="py-12 flex flex-col items-center justify-center text-gray-400 gap-3 text-center">
-              <div className="w-12 h-12 rounded-2xl bg-white/5 border border-dashed border-white/15 flex items-center justify-center text-gray-500">
-                <ImageIcon className="w-6 h-6" />
-              </div>
-              <div>
-                <p className="text-xs font-bold text-white">Nenhuma imagem enviada ainda</p>
-                <p className="text-[11px] text-gray-400 mt-0.5">Suba a sua primeira imagem clicando no botão acima.</p>
-              </div>
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-              {images.map((img) => {
-                const isSelected = currentUrl === img.url;
-                return (
-                  <div
-                    key={img.name}
-                    onClick={() => {
-                      onSelect(img.url);
-                      onClose();
-                    }}
-                    className={`group relative rounded-xl border p-2 cursor-pointer transition flex flex-col items-center justify-between gap-2 overflow-hidden ${
-                      isSelected
-                        ? 'bg-brand-cyan/15 border-brand-cyan shadow-glow-cyan'
-                        : 'bg-white/5 border-white/10 hover:border-white/25 hover:bg-white/10'
-                    }`}
-                  >
-                    <div className="w-full aspect-square rounded-lg bg-dark-900 overflow-hidden relative border border-white/10 flex items-center justify-center">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={img.url}
-                        alt={img.name}
-                        className="w-full h-full object-cover group-hover:scale-105 transition"
-                        onError={(e) => {
-                          (e.currentTarget as HTMLElement).style.display = 'none';
-                        }}
-                      />
-                      {isSelected && (
-                        <div className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-brand-cyan text-dark-900 flex items-center justify-center shadow">
-                          <Check className="w-3 h-3 stroke-[3]" />
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="w-full flex items-center justify-between gap-1 text-[10px]">
-                      <div className="truncate flex-1 text-gray-300 font-mono" title={img.name}>
-                        {img.name}
-                      </div>
-                      <button
-                        type="button"
-                        onClick={(e) => handleDeleteImage(img, e)}
-                        className="p-1 rounded-md text-gray-500 hover:text-red-400 hover:bg-red-500/10 transition shrink-0"
-                        title="Excluir imagem do disco"
-                      >
-                        <Trash2 className="w-3 h-3" />
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-        {/* Footer */}
-        <div className="p-3 border-t border-white/10 flex justify-end">
-          <button
-            onClick={onClose}
-            className="px-4 py-1.5 rounded-xl bg-white/10 hover:bg-white/15 border border-white/15 text-xs font-semibold text-white transition"
-          >
-            Fechar
-          </button>
-        </div>
-
-      </div>
-    </div>
-  );
-}
-
-interface ImageCropModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  imageUrl: string;
-  initialPosition?: string;
-  initialFit?: 'cover' | 'contain';
-  aspectRatio?: 'banner' | 'card' | 'square' | 'auto';
-  showAvatarGuide?: boolean;
-  title?: string;
-  onSaveCrop: (croppedUrl: string, position: string, fit: 'cover' | 'contain') => void;
-}
-
-function ImageCropModal({
-  isOpen,
-  onClose,
-  imageUrl,
-  initialPosition = '50% 50%',
-  initialFit = 'cover',
-  aspectRatio = 'card',
-  showAvatarGuide = false,
-  title = 'Ajustar Enquadramento da Imagem',
-  onSaveCrop,
-}: ImageCropModalProps) {
-  const parsePos = (posStr: string) => {
-    const parts = (posStr || '50% 50%').split(' ');
-    const x = parseInt(parts[0]) || 50;
-    const y = parseInt(parts[1]) || 50;
-    return { x, y };
-  };
-
-  const [posX, setPosX] = useState(50);
-  const [posY, setPosY] = useState(50);
-  const [zoom, setZoom] = useState(100);
-  const [fit, setFit] = useState<'cover' | 'contain'>('cover');
-  const [avatarGuideActive, setAvatarGuideActive] = useState(showAvatarGuide);
-  const [isProcessing, setIsProcessing] = useState(false);
-
-  useEffect(() => {
-    if (isOpen) {
-      const parsed = parsePos(initialPosition);
-      setPosX(parsed.x);
-      setPosY(parsed.y);
-      setZoom(100);
-      setFit(initialFit || 'cover');
-      setAvatarGuideActive(showAvatarGuide);
-    }
-  }, [isOpen, initialPosition, initialFit, showAvatarGuide]);
-
-  if (!isOpen || !imageUrl) return null;
-
-  const handleCropAndSave = async () => {
-    setIsProcessing(true);
-    try {
-      const img = document.createElement('img');
-      img.crossOrigin = 'anonymous';
-      img.src = imageUrl;
-
-      await new Promise((resolve, reject) => {
-        if (img.complete) resolve(true);
-        img.onload = () => resolve(true);
-        img.onerror = () => reject(new Error('Falha ao carregar imagem para recorte'));
-      });
-
-      let targetW = 800;
-      let targetH = 450;
-      let prefix = 'card';
-
-      if (aspectRatio === 'banner') {
-        targetW = 1200;
-        targetH = 480;
-        prefix = 'banner';
-      } else if (aspectRatio === 'square') {
-        targetW = 600;
-        targetH = 600;
-        prefix = 'foto';
-      }
-
-      const canvas = document.createElement('canvas');
-      canvas.width = targetW;
-      canvas.height = targetH;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) throw new Error('Contexto 2D não disponível');
-
-      ctx.fillStyle = '#08090d';
-      ctx.fillRect(0, 0, targetW, targetH);
-
-      const scaleMultiplier = zoom / 100;
-      const imgW = img.naturalWidth || img.width;
-      const imgH = img.naturalHeight || img.height;
-
-      if (fit === 'contain') {
-        ctx.save();
-        ctx.filter = 'blur(20px) brightness(0.4)';
-        ctx.drawImage(img, -50, -50, targetW + 100, targetH + 100);
-        ctx.restore();
-
-        const ratio = Math.min(targetW / imgW, targetH / imgH) * scaleMultiplier;
-        const drawW = imgW * ratio;
-        const drawH = imgH * ratio;
-        const drawX = (targetW - drawW) * (posX / 100);
-        const drawY = (targetH - drawH) * (posY / 100);
-
-        ctx.drawImage(img, drawX, drawY, drawW, drawH);
-      } else {
-        const baseRatio = Math.max(targetW / imgW, targetH / imgH);
-        const finalRatio = baseRatio * scaleMultiplier;
-        const drawW = imgW * finalRatio;
-        const drawH = imgH * finalRatio;
-
-        const drawX = (targetW - drawW) * (posX / 100);
-        const drawY = (targetH - drawH) * (posY / 100);
-
-        ctx.drawImage(img, drawX, drawY, drawW, drawH);
-      }
-
-      if (aspectRatio === 'banner') {
-        const gradient = ctx.createLinearGradient(0, targetH * 0.5, 0, targetH);
-        gradient.addColorStop(0, 'rgba(8, 9, 13, 0)');
-        gradient.addColorStop(1, 'rgba(8, 9, 13, 0.6)');
-        ctx.fillStyle = gradient;
-        ctx.fillRect(0, 0, targetW, targetH);
-      }
-
-      const blob = await new Promise<Blob | null>((resolve) =>
-        canvas.toBlob((b) => resolve(b), 'image/webp', 0.92)
-      );
-
-      if (!blob) throw new Error('Falha ao gerar blob recortado.');
-
-      const formData = new FormData();
-      const filename = `${prefix}-recortado-${Date.now()}.webp`;
-      formData.append('file', blob, filename);
-
-      const res = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData,
-      });
-      const data = await res.json();
-
-      if (res.ok && data.success && data.url) {
-        onSaveCrop(data.url, '50% 50%', 'cover');
-        onClose();
-      } else {
-        onSaveCrop(imageUrl, `${posX}% ${posY}%`, fit);
-        onClose();
-      }
-    } catch (err) {
-      console.warn('Fallback to CSS position/fit:', err);
-      onSaveCrop(imageUrl, `${posX}% ${posY}%`, fit);
-      onClose();
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-150">
-      <div className="bg-[#0f111a] border border-white/15 rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
-        
-        {/* Header */}
-        <div className="p-4 border-b border-white/10 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Crop className="w-5 h-5 text-brand-cyan" />
-            <div>
-              <h3 className="text-sm font-bold text-white">{title}</h3>
-              <p className="text-[11px] text-gray-400">Posicione, dê zoom ou recorte a imagem</p>
-            </div>
-          </div>
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-
-        {/* Content Body */}
-        <div className="p-5 overflow-y-auto space-y-5 flex-1">
-          
-          {/* Real-time Visual Preview Box */}
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-gray-300 flex items-center gap-1.5">
-                <Eye className="w-3.5 h-3.5 text-brand-cyan" />
-                <span>Pré-visualização do Enquadramento</span>
-              </span>
-              {showAvatarGuide && (
-                <button
-                  type="button"
-                  onClick={() => setAvatarGuideActive(!avatarGuideActive)}
-                  className={`text-[10px] px-2 py-0.5 rounded-full border transition flex items-center gap-1 font-semibold ${
-                    avatarGuideActive
-                      ? 'bg-brand-cyan/20 text-brand-cyan border-brand-cyan/40'
-                      : 'bg-white/5 text-gray-400 border-white/10'
-                  }`}
-                >
-                  <span>{avatarGuideActive ? 'Guia do Avatar Ativo' : 'Ocultar Guia do Avatar'}</span>
-                </button>
-              )}
-            </div>
-
-            {/* Frame Container */}
-            <div className="flex justify-center">
-              <div
-                className={`rounded-2xl overflow-hidden relative border border-white/20 shadow-2xl bg-dark-900 flex items-center justify-center ${
-                  aspectRatio === 'banner'
-                    ? 'w-full h-44 sm:h-48'
-                    : aspectRatio === 'square'
-                    ? 'w-44 h-44 sm:w-52 sm:h-52 aspect-square'
-                    : 'w-full h-44 sm:h-48 aspect-video max-w-md'
-                }`}
-              >
-                {fit === 'contain' && (
-                  /* eslint-disable-next-line @next/next/no-img-element */
-                  <img
-                    src={imageUrl}
-                    alt="Ambient BG"
-                    className="absolute inset-0 w-full h-full object-cover blur-xl opacity-30 scale-125 pointer-events-none"
-                  />
-                )}
-
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={imageUrl}
-                  alt="Preview"
-                  className="w-full h-full select-none pointer-events-none transition-all duration-75"
-                  style={{
-                    objectFit: fit,
-                    objectPosition: `${posX}% ${posY}%`,
-                    transform: zoom !== 100 ? `scale(${zoom / 100})` : undefined,
-                    transformOrigin: `${posX}% ${posY}%`,
-                  }}
-                />
-
-                {aspectRatio === 'banner' && (
-                  <div className="absolute inset-0 bg-gradient-to-t from-[#08090d]/80 via-transparent to-black/20 pointer-events-none" />
-                )}
-
-                {showAvatarGuide && avatarGuideActive && (
-                  <div className="absolute -bottom-10 left-1/2 -translate-x-1/2 w-20 h-20 sm:w-24 sm:h-24 rounded-full border-2 border-dashed border-white/60 bg-black/40 backdrop-blur-xs flex flex-col items-center justify-center text-center pointer-events-none z-10 shadow-xl">
-                    <span className="text-[9px] font-bold text-white tracking-wider uppercase drop-shadow">Foto Perfil</span>
-                  </div>
-                )}
-              </div>
-            </div>
-            {showAvatarGuide && (
-              <p className="text-[10px] text-gray-400 text-center">
-                O círculo pontilhado indica onde sua foto de perfil ficará sobreposta no banner.
-              </p>
-            )}
-          </div>
-
-          {/* Controls Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-xl bg-white/5 border border-white/10">
-            
-            {/* Vertical Position (Y) */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <label className="text-xs font-bold text-gray-300">Posição Vertical (Altura)</label>
-                <span className="text-xs font-mono text-brand-cyan font-bold">{posY}%</span>
-              </div>
-              <input
-                type="range"
-                min="0"
-                max="100"
-                value={posY}
-                onChange={(e) => setPosY(Number(e.target.value))}
-                className="w-full accent-cyan-400 cursor-pointer"
-              />
-              <div className="flex items-center gap-1.5 pt-1">
-                <button
-                  type="button"
-                  onClick={() => setPosY(0)}
-                  className="px-2 py-1 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-[10px] text-gray-300 hover:text-white transition flex-1"
-                >
-                  ⬆️ Topo (0%)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPosY(50)}
-                  className="px-2 py-1 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-[10px] text-gray-300 hover:text-white transition flex-1"
-                >
-                  🎯 Centro (50%)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPosY(100)}
-                  className="px-2 py-1 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-[10px] text-gray-300 hover:text-white transition flex-1"
-                >
-                  ⬇️ Base (100%)
-                </button>
-              </div>
-            </div>
-
-            {/* Horizontal Position (X) */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <label className="text-xs font-bold text-gray-300">Posição Horizontal (Largura)</label>
-                <span className="text-xs font-mono text-brand-cyan font-bold">{posX}%</span>
-              </div>
-              <input
-                type="range"
-                min="0"
-                max="100"
-                value={posX}
-                onChange={(e) => setPosX(Number(e.target.value))}
-                className="w-full accent-cyan-400 cursor-pointer"
-              />
-              <div className="flex items-center gap-1.5 pt-1">
-                <button
-                  type="button"
-                  onClick={() => setPosX(0)}
-                  className="px-2 py-1 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-[10px] text-gray-300 hover:text-white transition flex-1"
-                >
-                  ⬅️ Esquerda
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPosX(50)}
-                  className="px-2 py-1 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-[10px] text-gray-300 hover:text-white transition flex-1"
-                >
-                  🎯 Centro
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPosX(100)}
-                  className="px-2 py-1 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-[10px] text-gray-300 hover:text-white transition flex-1"
-                >
-                  ➡️ Direita
-                </button>
-              </div>
-            </div>
-
-            {/* Zoom / Scale */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <label className="text-xs font-bold text-gray-300">Zoom / Escala</label>
-                <span className="text-xs font-mono text-brand-cyan font-bold">{zoom}%</span>
-              </div>
-              <input
-                type="range"
-                min="100"
-                max="250"
-                value={zoom}
-                onChange={(e) => setZoom(Number(e.target.value))}
-                className="w-full accent-cyan-400 cursor-pointer"
-              />
-              <div className="flex items-center justify-between text-[10px] text-gray-400">
-                <span>100% (Normal)</span>
-                <button
-                  type="button"
-                  onClick={() => setZoom(100)}
-                  className="text-brand-cyan hover:underline"
-                >
-                  Resetar Zoom
-                </button>
-                <span>250% (Max)</span>
-              </div>
-            </div>
-
-            {/* Modo de Encaixe */}
-            <div className="space-y-2">
-              <label className="text-xs font-bold text-gray-300 block">Modo de Enquadramento</label>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setFit('cover')}
-                  className={`p-2 rounded-xl text-xs font-bold border transition text-left flex flex-col ${
-                    fit === 'cover'
-                      ? 'bg-brand-cyan/20 border-brand-cyan text-white shadow-glow-cyan'
-                      : 'bg-white/5 border-white/10 text-gray-400 hover:text-white'
-                  }`}
-                >
-                  <span>Preencher (Cover)</span>
-                  <span className="text-[9px] font-normal opacity-75">Corta sobras da imagem</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setFit('contain')}
-                  className={`p-2 rounded-xl text-xs font-bold border transition text-left flex flex-col ${
-                    fit === 'contain'
-                      ? 'bg-brand-cyan/20 border-brand-cyan text-white shadow-glow-cyan'
-                      : 'bg-white/5 border-white/10 text-gray-400 hover:text-white'
-                  }`}
-                >
-                  <span>Conter (Inteira)</span>
-                  <span className="text-[9px] font-normal opacity-75">Mostra 100% da foto</span>
-                </button>
-              </div>
-            </div>
-
-          </div>
-
-        </div>
-
-        {/* Footer Actions */}
-        <div className="p-4 border-t border-white/10 bg-[#0b0c13] flex flex-col sm:flex-row items-center justify-between gap-3">
-          <button
-            type="button"
-            onClick={() => {
-              setPosX(50);
-              setPosY(50);
-              setZoom(100);
-              setFit('cover');
-            }}
-            className="text-xs text-gray-400 hover:text-white transition flex items-center gap-1.5"
-          >
-            <RotateCcw className="w-3.5 h-3.5" />
-            <span>Resetar Ajustes</span>
-          </button>
-
-          <div className="flex items-center gap-2 self-stretch sm:self-auto">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-semibold text-gray-300 hover:text-white transition"
-            >
-              Cancelar
-            </button>
-
-            <button
-              type="button"
-              onClick={handleCropAndSave}
-              disabled={isProcessing}
-              className="px-5 py-2 rounded-xl bg-gradient-to-r from-brand-cyan to-brand-purple text-white font-bold text-xs hover:opacity-90 flex items-center gap-2 transition shadow-lg shadow-cyan-500/20 disabled:opacity-50"
-            >
-              {isProcessing ? (
-                <>
-                  <RefreshCw className="w-4 h-4 animate-spin" />
-                  <span>Processando Recorte...</span>
-                </>
-              ) : (
-                <>
-                  <Check className="w-4 h-4" />
-                  <span>Aplicar Enquadramento</span>
-                </>
-              )}
-            </button>
-          </div>
-        </div>
-
-      </div>
-    </div>
-  );
-}
-
-interface ImageUploadFieldProps {
-  label: string;
-  value: string;
-  onChange: (url: string) => void;
-  placeholder?: string;
-  helpText?: string;
-  allowCrop?: boolean;
-  cropAspectRatio?: 'banner' | 'card' | 'square' | 'auto';
-  showAvatarGuide?: boolean;
-  cropTitle?: string;
-  position?: string;
-  onPositionChange?: (pos: string) => void;
-  fit?: 'cover' | 'contain';
-  onFitChange?: (fit: 'cover' | 'contain') => void;
-}
-
-function ImageUploadField({
-  label,
-  value,
-  onChange,
-  placeholder = 'https://... ou suba um arquivo',
-  helpText,
-  allowCrop = true,
-  cropAspectRatio = 'card',
-  showAvatarGuide = false,
-  cropTitle,
-  position = '50% 50%',
-  onPositionChange,
-  fit = 'cover',
-  onFitChange,
-}: ImageUploadFieldProps) {
-  const [uploading, setUploading] = useState(false);
-  const [uploadSuccess, setUploadSuccess] = useState(false);
-  const [galleryOpen, setGalleryOpen] = useState(false);
-  const [cropOpen, setCropOpen] = useState(false);
-  const fileInputRef = React.useRef<HTMLInputElement>(null);
-
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (file.size > 15 * 1024 * 1024) {
-      alert('A imagem é muito grande (máximo 15MB).');
-      return;
-    }
-
-    setUploading(true);
-    setUploadSuccess(false);
-
-    const formData = new FormData();
-    formData.append('file', file);
-
-    try {
-      const res = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData,
-      });
-      const data = await res.json();
-      if (res.ok && data.success && data.url) {
-        onChange(data.url);
-        setUploadSuccess(true);
-        setTimeout(() => setUploadSuccess(false), 3000);
-      } else {
-        alert(data.error || 'Erro ao enviar a imagem.');
-      }
-    } catch (err: any) {
-      console.error('Upload error:', err);
-      alert('Erro de conexão ao fazer upload da imagem.');
-    } finally {
-      setUploading(false);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
-    }
-  };
-
-  const hasImage = Boolean(value && value.trim() !== '');
-
-  return (
-    <div className="space-y-1.5 w-full">
-      <div className="flex items-center justify-between">
-        <label className="text-[10px] text-gray-400 uppercase font-semibold block">
-          {label}
-        </label>
-        {hasImage && (
-          <button
-            type="button"
-            onClick={() => onChange('')}
-            className="text-[10px] text-red-400 hover:text-red-300 transition flex items-center gap-1 font-medium"
-            title="Remover imagem"
-          >
-            <Trash2 className="w-3 h-3" />
-            <span>Remover foto</span>
-          </button>
-        )}
-      </div>
-
-      <div className="flex items-center gap-2">
-        {/* Preview Thumbnail */}
-        {hasImage ? (
-          <div className="w-9 h-9 rounded-xl bg-dark-800 border border-white/15 overflow-hidden shrink-0 relative flex items-center justify-center">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={value}
-              alt="Prévia"
-              className="w-full h-full"
-              style={{
-                objectPosition: position || '50% 50%',
-                objectFit: fit || 'cover',
-              }}
-              onError={(e) => {
-                (e.currentTarget as HTMLElement).style.display = 'none';
-              }}
-            />
-          </div>
-        ) : (
-          <div className="w-9 h-9 rounded-xl bg-white/5 border border-dashed border-white/15 flex items-center justify-center shrink-0 text-gray-500">
-            <ImageIcon className="w-4 h-4" />
-          </div>
-        )}
-
-        {/* URL Input */}
-        <input
-          type="text"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder={placeholder}
-          className="flex-1 min-w-0 bg-dark-900 border border-white/15 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-brand-cyan font-mono"
-        />
-
-        {/* Hidden File Input */}
-        <input
-          type="file"
-          ref={fileInputRef}
-          onChange={handleFileChange}
-          accept="image/png,image/jpeg,image/jpg,image/webp,image/gif,image/svg+xml,image/avif"
-          className="hidden"
-        />
-
-        {/* Galeria Button */}
-        <button
-          type="button"
-          onClick={() => setGalleryOpen(true)}
-          className="px-2.5 py-1.5 rounded-xl border border-white/15 hover:border-white/30 bg-white/5 hover:bg-white/10 text-xs font-bold text-gray-200 hover:text-white transition shrink-0 flex items-center gap-1.5"
-          title="Abrir galeria de imagens salvas"
-        >
-          <FolderOpen className="w-3.5 h-3.5 text-purple-300" />
-          <span className="hidden sm:inline">Galeria</span>
-        </button>
-
-        {/* Direct Upload Button */}
-        <button
-          type="button"
-          onClick={() => fileInputRef.current?.click()}
-          disabled={uploading}
-          className={`px-3 py-1.5 rounded-xl border text-xs font-bold transition shrink-0 flex items-center gap-1.5 ${
-            uploadSuccess
-              ? 'bg-green-500/20 text-green-300 border-green-500/40'
-              : 'bg-white/10 hover:bg-white/15 border-white/15 hover:border-white/30 text-white disabled:opacity-50'
-          }`}
-          title="Fazer upload de nova imagem do computador"
-        >
-          {uploading ? (
-            <>
-              <RefreshCw className="w-3.5 h-3.5 animate-spin text-brand-cyan" />
-              <span className="hidden sm:inline">Enviando...</span>
-            </>
-          ) : uploadSuccess ? (
-            <>
-              <Check className="w-3.5 h-3.5 text-green-400" />
-              <span className="hidden sm:inline">Enviado!</span>
-            </>
-          ) : (
-            <>
-              <UploadCloud className="w-3.5 h-3.5 text-brand-cyan" />
-              <span className="hidden sm:inline">Subir Foto</span>
-              <span className="sm:hidden">Subir</span>
-            </>
-          )}
-        </button>
-
-        {/* Crop / Adjust Button */}
-        {hasImage && allowCrop && (
-          <button
-            type="button"
-            onClick={() => setCropOpen(true)}
-            className="px-2.5 py-1.5 rounded-xl border border-brand-cyan/30 hover:border-brand-cyan/50 bg-brand-cyan/15 hover:bg-brand-cyan/25 text-xs font-bold text-brand-cyan hover:text-white transition shrink-0 flex items-center gap-1.5 shadow-sm"
-            title="Ajustar enquadramento e recortar foto"
-          >
-            <Crop className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Ajustar</span>
-          </button>
-        )}
-      </div>
-
-      {/* Quick position & fit adjustment presets */}
-      {hasImage && (onPositionChange || onFitChange) && (
-        <div className="flex items-center gap-1.5 flex-wrap pt-0.5 text-[10px]">
-          <span className="text-gray-400 font-semibold mr-0.5 flex items-center gap-1">
-            <Sliders className="w-3 h-3 text-brand-cyan" />
-            <span>Ajuste Rápido:</span>
-          </span>
-          {onPositionChange && (
-            <>
-              <button
-                type="button"
-                onClick={() => onPositionChange('50% 0%')}
-                className={`px-2 py-0.5 rounded-md border transition ${
-                  position === '50% 0%'
-                    ? 'bg-brand-cyan/20 border-brand-cyan/40 text-brand-cyan font-bold'
-                    : 'bg-white/5 hover:bg-white/10 border-white/10 text-gray-300'
-                }`}
-                title="Alinhar ao Topo"
-              >
-                ⬆️ Topo
-              </button>
-              <button
-                type="button"
-                onClick={() => onPositionChange('50% 50%')}
-                className={`px-2 py-0.5 rounded-md border transition ${
-                  position === '50% 50%' || !position
-                    ? 'bg-brand-cyan/20 border-brand-cyan/40 text-brand-cyan font-bold'
-                    : 'bg-white/5 hover:bg-white/10 border-white/10 text-gray-300'
-                }`}
-                title="Alinhar ao Centro"
-              >
-                🎯 Centro
-              </button>
-              <button
-                type="button"
-                onClick={() => onPositionChange('50% 100%')}
-                className={`px-2 py-0.5 rounded-md border transition ${
-                  position === '50% 100%'
-                    ? 'bg-brand-cyan/20 border-brand-cyan/40 text-brand-cyan font-bold'
-                    : 'bg-white/5 hover:bg-white/10 border-white/10 text-gray-300'
-                }`}
-                title="Alinhar à Base"
-              >
-                ⬇️ Base
-              </button>
-            </>
-          )}
-          {onFitChange && (
-            <button
-              type="button"
-              onClick={() => onFitChange(fit === 'contain' ? 'cover' : 'contain')}
-              className={`px-2 py-0.5 rounded-md border transition ${
-                fit === 'contain'
-                  ? 'bg-brand-cyan/20 border-brand-cyan/40 text-brand-cyan font-bold'
-                  : 'bg-white/5 hover:bg-white/10 border-white/10 text-gray-300'
-              }`}
-              title="Alternar entre preencher ou conter foto inteira"
-            >
-              🖼️ {fit === 'contain' ? 'Modo Inteiro (Ativo)' : 'Encaixar Inteira'}
-            </button>
-          )}
-          <span className="ml-auto text-gray-500 font-mono text-[9px]">
-            {position || '50% 50%'} ({fit === 'contain' ? 'Inteira' : 'Preencher'})
-          </span>
-        </div>
-      )}
-
-      {helpText && <p className="text-[10px] text-gray-500">{helpText}</p>}
-
-      {/* Gallery Modal */}
-      <MediaGalleryModal
-        isOpen={galleryOpen}
-        onClose={() => setGalleryOpen(false)}
-        onSelect={(url) => onChange(url)}
-        currentUrl={value}
-      />
-
-      {/* Unified Image Crop Modal */}
-      {hasImage && allowCrop && (
-        <ImageCropModal
-          isOpen={cropOpen}
-          onClose={() => setCropOpen(false)}
-          imageUrl={value}
-          initialPosition={position || '50% 50%'}
-          initialFit={fit || 'cover'}
-          aspectRatio={cropAspectRatio}
-          showAvatarGuide={showAvatarGuide}
-          title={cropTitle || `Ajustar Enquadramento: ${label}`}
-          onSaveCrop={(croppedUrl, newPos, newFit) => {
-            onChange(croppedUrl);
-            onPositionChange?.(newPos);
-            onFitChange?.(newFit);
-          }}
-        />
-      )}
-    </div>
-  );
-}
 
 export default function AdminDashboard() {
   const [metrics, setMetrics] = useState<AnalyticsSummary | null>(null);
@@ -1090,20 +88,53 @@ export default function AdminDashboard() {
   
   // Profile state
   const [profile, setProfile] = useState<ProfileConfig>(INITIAL_PROFILE);
-  const [savingProfile, setSavingProfile] = useState(false);
-  const [profileSaveSuccess, setProfileSaveSuccess] = useState(false);
+  const [savedProfile, setSavedProfile] = useState<ProfileConfig>(INITIAL_PROFILE);
 
   // Socials state
   const [socialsList, setSocialsList] = useState<SocialLink[]>([]);
-  const [savingSocials, setSavingSocials] = useState(false);
-  const [socialsSaveSuccess, setSocialsSaveSuccess] = useState(false);
+  const [savedSocials, setSavedSocials] = useState<SocialLink[]>([]);
 
   // Links state
   const [linksList, setLinksList] = useState<LinkItem[]>(INITIAL_LINKS);
-  const [savingLinks, setSavingLinks] = useState(false);
-  const [linksSaveSuccess, setLinksSaveSuccess] = useState(false);
+  const [savedLinks, setSavedLinks] = useState<LinkItem[]>(INITIAL_LINKS);
 
-  const [resetSuccess, setResetSuccess] = useState(false);
+  // Global save state
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+
+  // Gallery Picker & Crop Modal states for Profile / Buttons
+  const [galleryPickerOpen, setGalleryPickerOpen] = useState(false);
+  const [pickerTarget, setPickerTarget] = useState<{
+    type: 'avatar' | 'cover' | 'link-image';
+    linkId?: string;
+  } | null>(null);
+
+  const [cropModalConfig, setCropModalConfig] = useState<{
+    isOpen: boolean;
+    imageUrl: string;
+    position: string;
+    fit: 'cover' | 'contain';
+    aspectRatio: 'banner' | 'card' | 'square' | 'auto';
+    showAvatarGuide: boolean;
+    title: string;
+    onSave: (url: string, position: string, fit: 'cover' | 'contain') => void;
+  }>({
+    isOpen: false,
+    imageUrl: '',
+    position: '50% 50%',
+    fit: 'contain',
+    aspectRatio: 'card',
+    showAvatarGuide: false,
+    title: 'Ajustar Enquadramento',
+    onSave: () => {},
+  });
+
+  // Calculate pending unsaved changes
+  const hasUnsavedChanges = Boolean(
+    JSON.stringify(profile) !== JSON.stringify(savedProfile) ||
+    JSON.stringify(socialsList) !== JSON.stringify(savedSocials) ||
+    JSON.stringify(linksList) !== JSON.stringify(savedLinks)
+  );
 
   // Fetch metrics from analytics API
   const fetchMetrics = async () => {
@@ -1126,6 +157,7 @@ export default function AdminDashboard() {
       const data = await res.json();
       if (data && data.profile) {
         setProfile(data.profile);
+        setSavedProfile(data.profile);
       }
     } catch (err) {
       console.error('Error fetching profile:', err);
@@ -1139,6 +171,7 @@ export default function AdminDashboard() {
       const data = await res.json();
       if (data && Array.isArray(data.socials)) {
         setSocialsList(data.socials);
+        setSavedSocials(data.socials);
       }
     } catch (err) {
       console.error('Error fetching socials:', err);
@@ -1152,6 +185,7 @@ export default function AdminDashboard() {
       const data = await res.json();
       if (data && Array.isArray(data.links)) {
         setLinksList(data.links);
+        setSavedLinks(data.links);
       }
     } catch (err) {
       console.error('Error fetching links:', err);
@@ -1167,54 +201,78 @@ export default function AdminDashboard() {
     return () => clearInterval(interval);
   }, []);
 
-  // Profile operations
-  const handleSaveProfile = async () => {
-    setSavingProfile(true);
+  // Global Save Handler
+  const handleGlobalSave = async () => {
+    setIsSaving(true);
     try {
-      const res = await fetch('/api/profile', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ profile }),
-      });
-      const data = await res.json();
-      if (data && data.profile) {
-        setProfile(data.profile);
-        setProfileSaveSuccess(true);
-        setTimeout(() => setProfileSaveSuccess(false), 3500);
+      const promises: Promise<any>[] = [];
+
+      // Save profile if changed
+      if (JSON.stringify(profile) !== JSON.stringify(savedProfile)) {
+        promises.push(
+          fetch('/api/profile', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ profile }),
+          }).then(async (res) => {
+            const data = await res.json();
+            if (data?.profile) {
+              setProfile(data.profile);
+              setSavedProfile(data.profile);
+            }
+          })
+        );
       }
+
+      // Save socials if changed
+      if (JSON.stringify(socialsList) !== JSON.stringify(savedSocials)) {
+        promises.push(
+          fetch('/api/socials', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ socials: socialsList }),
+          }).then(async (res) => {
+            const data = await res.json();
+            if (data && Array.isArray(data.socials)) {
+              setSocialsList(data.socials);
+              setSavedSocials(data.socials);
+            }
+          })
+        );
+      }
+
+      // Save links if changed
+      if (JSON.stringify(linksList) !== JSON.stringify(savedLinks)) {
+        promises.push(
+          fetch('/api/links', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ links: linksList }),
+          }).then(async (res) => {
+            const data = await res.json();
+            if (data && Array.isArray(data.links)) {
+              setLinksList(data.links);
+              setSavedLinks(data.links);
+            }
+          })
+        );
+      }
+
+      await Promise.all(promises);
+
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 2800);
     } catch (err) {
-      console.error('Error saving profile:', err);
-      alert('Erro ao salvar as informações do perfil.');
+      console.error('Error saving changes globally:', err);
+      alert('Houve um erro ao salvar as alterações. Tente novamente.');
     } finally {
-      setSavingProfile(false);
+      setIsSaving(false);
     }
   };
 
   // Socials operations
-  const handleSaveSocials = async () => {
-    setSavingSocials(true);
-    try {
-      const res = await fetch('/api/socials', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ socials: socialsList }),
-      });
-      const data = await res.json();
-      if (data && Array.isArray(data.socials)) {
-        setSocialsList(data.socials);
-        setSocialsSaveSuccess(true);
-        setTimeout(() => setSocialsSaveSuccess(false), 3500);
-      }
-    } catch (err) {
-      console.error('Error saving socials JSON:', err);
-      alert('Erro ao salvar as redes sociais.');
-    } finally {
-      setSavingSocials(false);
-    }
-  };
-
   const handleResetSocials = async () => {
-    if (!confirm('Restaurar as redes sociais originais?')) return;
+    if (!confirm('Restaurar as redes sociais padrão?')) return;
     try {
       const res = await fetch('/api/socials', {
         method: 'POST',
@@ -1222,10 +280,9 @@ export default function AdminDashboard() {
         body: JSON.stringify({ action: 'reset' }),
       });
       const data = await res.json();
-      if (data.socials) {
+      if (data?.socials) {
         setSocialsList(data.socials);
-        setSocialsSaveSuccess(true);
-        setTimeout(() => setSocialsSaveSuccess(false), 3000);
+        setSavedSocials(data.socials);
       }
     } catch (err) {
       console.error('Error resetting socials:', err);
@@ -1311,31 +368,8 @@ export default function AdminDashboard() {
   };
 
   // Links operations
-  const handleSaveLinks = async (updatedLinks?: LinkItem[]) => {
-    const targetLinks = updatedLinks || linksList;
-    setSavingLinks(true);
-    try {
-      const res = await fetch('/api/links', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ links: targetLinks }),
-      });
-      const data = await res.json();
-      if (data && Array.isArray(data.links)) {
-        setLinksList(data.links);
-        setLinksSaveSuccess(true);
-        setTimeout(() => setLinksSaveSuccess(false), 3500);
-      }
-    } catch (err) {
-      console.error('Error saving links JSON:', err);
-      alert('Erro ao salvar os botões.');
-    } finally {
-      setSavingLinks(false);
-    }
-  };
-
   const handleResetLinks = async () => {
-    if (!confirm('Restaurar a lista de botões original?')) return;
+    if (!confirm('Restaurar os botões originais?')) return;
     try {
       const res = await fetch('/api/links', {
         method: 'POST',
@@ -1343,10 +377,9 @@ export default function AdminDashboard() {
         body: JSON.stringify({ action: 'reset' }),
       });
       const data = await res.json();
-      if (data.links) {
+      if (data?.links) {
         setLinksList(data.links);
-        setLinksSaveSuccess(true);
-        setTimeout(() => setLinksSaveSuccess(false), 3000);
+        setSavedLinks(data.links);
       }
     } catch (err) {
       console.error('Error resetting links:', err);
@@ -1367,9 +400,7 @@ export default function AdminDashboard() {
 
   const removeLinkItem = (id: string) => {
     if (!confirm('Tem certeza que deseja excluir este botão?')) return;
-    const updated = linksList.filter((item) => item.id !== id);
-    setLinksList(updated);
-    handleSaveLinks(updated);
+    setLinksList((prev) => prev.filter((item) => item.id !== id));
   };
 
   const moveLinkItem = (index: number, direction: 'up' | 'down') => {
@@ -1385,12 +416,12 @@ export default function AdminDashboard() {
     const newItem: LinkItem = {
       id: `link-${Date.now()}`,
       type: type,
-      title: type === 'cta-primary' ? 'Novo Botão Mentoria VIP' : 'Novo Botão Personalizado',
-      subtitle: 'Descrição do seu botão',
+      title: type === 'cta-primary' ? 'Novo Botão de Destaque' : 'Novo Botão',
+      subtitle: 'Descrição breve do botão',
       url: 'https://exemplo.com',
-      image: type !== 'no-photo' ? 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=600&q=80' : '',
+      image: '',
       imagePosition: '50% 50%',
-      imageFit: 'cover',
+      imageFit: 'contain',
       active: true,
       hasBlur: false,
       blurText: '',
@@ -1398,156 +429,226 @@ export default function AdminDashboard() {
       badgeColor: 'pink',
       category: 'custom',
     };
-    const updated = [...linksList, newItem];
-    setLinksList(updated);
+    setLinksList((prev) => [...prev, newItem]);
   };
 
-  const handleResetMetrics = async () => {
-    if (!confirm('Deseja reiniciar todas as métricas para o estado original?')) return;
-    try {
-      const res = await fetch('/api/metrics', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'reset' }),
-      });
-      const data = await res.json();
-      if (data.metrics) {
-        setMetrics(data.metrics);
-        setResetSuccess(true);
-        setTimeout(() => setResetSuccess(false), 3000);
-      }
-    } catch (err) {
-      console.error('Error resetting analytics:', err);
+  // Gallery Picker open helpers
+  const openGalleryForAvatar = () => {
+    setPickerTarget({ type: 'avatar' });
+    setGalleryPickerOpen(true);
+  };
+
+  const openGalleryForCover = () => {
+    setPickerTarget({ type: 'cover' });
+    setGalleryPickerOpen(true);
+  };
+
+  const openGalleryForLink = (linkId: string) => {
+    setPickerTarget({ type: 'link-image', linkId });
+    setGalleryPickerOpen(true);
+  };
+
+  const handleGallerySelectedImage = (url: string, position: string, fit: 'cover' | 'contain') => {
+    if (!pickerTarget) return;
+
+    if (pickerTarget.type === 'avatar') {
+      setProfile((prev) => ({
+        ...prev,
+        avatarUrl: url,
+      }));
+    } else if (pickerTarget.type === 'cover') {
+      setProfile((prev) => ({
+        ...prev,
+        coverImageUrl: url,
+        coverPosition: position,
+        coverFit: fit,
+      }));
+    } else if (pickerTarget.type === 'link-image' && pickerTarget.linkId) {
+      updateLinkItem(pickerTarget.linkId, 'image', url);
+      updateLinkItem(pickerTarget.linkId, 'imagePosition', position);
+      updateLinkItem(pickerTarget.linkId, 'imageFit', fit);
     }
   };
 
-  const getSocialIconComponent = (platform: string) => {
-    return <SocialIcon platform={platform} className="w-5 h-5" />;
+  // Crop / Adjust open helpers
+  const openCropForAvatar = () => {
+    setCropModalConfig({
+      isOpen: true,
+      imageUrl: profile.avatarUrl || INITIAL_PROFILE.avatarUrl,
+      position: '50% 50%',
+      fit: 'contain',
+      aspectRatio: 'square',
+      showAvatarGuide: false,
+      title: 'Ajustar Foto de Perfil',
+      onSave: (newUrl) => {
+        setProfile((prev) => ({ ...prev, avatarUrl: newUrl }));
+      },
+    });
   };
 
+  const openCropForCover = () => {
+    if (!profile.coverImageUrl) return;
+    setCropModalConfig({
+      isOpen: true,
+      imageUrl: profile.coverImageUrl,
+      position: profile.coverPosition || '50% 50%',
+      fit: profile.coverFit || 'contain',
+      aspectRatio: 'banner',
+      showAvatarGuide: true,
+      title: 'Ajustar Foto de Capa (Banner)',
+      onSave: (newUrl, pos, fit) => {
+        setProfile((prev) => ({
+          ...prev,
+          coverImageUrl: newUrl,
+          coverPosition: pos,
+          coverFit: fit,
+        }));
+      },
+    });
+  };
+
+  const openCropForLink = (item: LinkItem) => {
+    if (!item.image) return;
+    setCropModalConfig({
+      isOpen: true,
+      imageUrl: item.image,
+      position: item.imagePosition || '50% 50%',
+      fit: item.imageFit || 'contain',
+      aspectRatio: item.type === 'left-thumb' ? 'square' : 'card',
+      showAvatarGuide: false,
+      title: `Ajustar Imagem: ${item.title || 'Botão'}`,
+      onSave: (newUrl, pos, fit) => {
+        updateLinkItem(item.id, 'image', newUrl);
+        updateLinkItem(item.id, 'imagePosition', pos);
+        updateLinkItem(item.id, 'imageFit', fit);
+      },
+    });
+  };
+
+  const hasCoverImage = Boolean(
+    profile.coverImageUrl &&
+    profile.coverImageUrl.trim() !== '' &&
+    profile.coverImageUrl !== profile.avatarUrl
+  );
+
   return (
-    <div className="min-h-screen bg-[#08090d] text-white font-sans selection:bg-brand-purple/30 flex flex-col md:flex-row pb-24 md:pb-0">
+    <div className="min-h-screen bg-[#08090d] text-gray-100 font-sans selection:bg-brand-purple/30 flex flex-col md:flex-row pb-28 md:pb-12 overflow-x-hidden">
       
-      {/* Desktop Lateral Sidebar Menu */}
-      <aside className="hidden md:flex w-64 border-r border-white/10 p-6 flex-col justify-between bg-[#0b0c13] shrink-0 sticky top-0 h-screen z-30">
+      {/* Desktop Lateral Sidebar */}
+      <aside className="hidden md:flex w-64 border-r border-white/[0.08] p-6 flex-col justify-between bg-[#0b0c13] shrink-0 sticky top-0 h-screen z-30">
         <div className="space-y-6">
           
           {/* Logo & Portal Header */}
-          <div className="flex items-center gap-3 pb-4 border-b border-white/10">
+          <div className="flex items-center gap-3 pb-5 border-b border-white/[0.08]">
             <Link
               href="/"
-              className="w-9 h-9 rounded-xl bg-white/5 border border-white/10 hover:border-white/20 flex items-center justify-center text-gray-300 hover:text-white transition"
+              className="w-8 h-8 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 flex items-center justify-center text-gray-400 hover:text-white transition"
               title="Voltar ao site público"
             >
               <ArrowLeft className="w-4 h-4" />
             </Link>
             <div>
-              <h2 className="text-base font-bold tracking-tight text-white">Covilink Admin</h2>
-              <span className="text-[10px] text-brand-pink font-semibold bg-brand-pink/10 border border-brand-pink/20 px-2 py-0.5 rounded-full">
-                Painel de Controle
-              </span>
+              <h2 className="text-sm font-bold tracking-tight text-white">Covilink Admin</h2>
+              <span className="text-[10px] text-gray-400 font-medium">Painel Administrativo</span>
             </div>
           </div>
 
-          {/* Navigation Menu Links */}
-          <nav className="space-y-1.5">
-            <p className="text-[10px] uppercase font-bold text-gray-500 tracking-wider px-3 mb-2">
-              Menu de Controle
+          {/* Navigation Menu */}
+          <nav className="space-y-1">
+            <p className="text-[10px] uppercase font-semibold text-gray-500 tracking-wider px-3 mb-2">
+              Seções
             </p>
 
             <button
+              type="button"
               onClick={() => setActiveTab('metrics')}
-              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition text-left ${
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-semibold transition text-left ${
                 activeTab === 'metrics'
-                  ? 'bg-brand-purple/20 text-white border border-brand-purple/40 shadow-glow-purple'
-                  : 'text-gray-400 hover:text-white hover:bg-white/5 border border-transparent'
+                  ? 'bg-white/10 text-white shadow-sm'
+                  : 'text-gray-400 hover:text-white hover:bg-white/[0.04]'
               }`}
             >
-              <BarChart3 className={`w-4 h-4 ${activeTab === 'metrics' ? 'text-brand-purple' : ''}`} />
-              <span>Métricas & Analytics</span>
+              <BarChart3 className={`w-4 h-4 ${activeTab === 'metrics' ? 'text-brand-purple' : 'text-gray-400'}`} />
+              <span>Métricas</span>
             </button>
 
             <button
+              type="button"
               onClick={() => setActiveTab('profile')}
-              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition text-left ${
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-semibold transition text-left ${
                 activeTab === 'profile'
-                  ? 'bg-brand-cyan/20 text-white border border-brand-cyan/40 shadow-glow-cyan'
-                  : 'text-gray-400 hover:text-white hover:bg-white/5 border border-transparent'
+                  ? 'bg-white/10 text-white shadow-sm'
+                  : 'text-gray-400 hover:text-white hover:bg-white/[0.04]'
               }`}
             >
-              <User className={`w-4 h-4 ${activeTab === 'profile' ? 'text-brand-cyan' : ''}`} />
-              <span>Editar Perfil & Fotos</span>
+              <User className={`w-4 h-4 ${activeTab === 'profile' ? 'text-brand-cyan' : 'text-gray-400'}`} />
+              <span>Perfil</span>
             </button>
 
             <button
+              type="button"
+              onClick={() => setActiveTab('gallery')}
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-semibold transition text-left ${
+                activeTab === 'gallery'
+                  ? 'bg-white/10 text-white shadow-sm'
+                  : 'text-gray-400 hover:text-white hover:bg-white/[0.04]'
+              }`}
+            >
+              <ImageIcon className={`w-4 h-4 ${activeTab === 'gallery' ? 'text-brand-pink' : 'text-gray-400'}`} />
+              <span>Galeria</span>
+            </button>
+
+            <button
+              type="button"
               onClick={() => setActiveTab('socials')}
-              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition text-left ${
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-semibold transition text-left ${
                 activeTab === 'socials'
-                  ? 'bg-brand-pink/20 text-white border border-brand-pink/40 shadow-glow-pink'
-                  : 'text-gray-400 hover:text-white hover:bg-white/5 border border-transparent'
+                  ? 'bg-white/10 text-white shadow-sm'
+                  : 'text-gray-400 hover:text-white hover:bg-white/[0.04]'
               }`}
             >
-              <Globe className={`w-4 h-4 ${activeTab === 'socials' ? 'text-brand-pink' : ''}`} />
-              <span>Redes Sociais</span>
+              <Globe className={`w-4 h-4 ${activeTab === 'socials' ? 'text-brand-pink' : 'text-gray-400'}`} />
+              <span>Redes</span>
             </button>
 
             <button
+              type="button"
               onClick={() => setActiveTab('buttons')}
-              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition text-left ${
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-semibold transition text-left ${
                 activeTab === 'buttons'
-                  ? 'bg-purple-600/20 text-white border border-purple-500/40'
-                  : 'text-gray-400 hover:text-white hover:bg-white/5 border border-transparent'
+                  ? 'bg-white/10 text-white shadow-sm'
+                  : 'text-gray-400 hover:text-white hover:bg-white/[0.04]'
               }`}
             >
-              <Edit3 className={`w-4 h-4 ${activeTab === 'buttons' ? 'text-purple-400' : ''}`} />
-              <span>Criar & Modificar Botões</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('reorder')}
-              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition text-left ${
-                activeTab === 'reorder'
-                  ? 'bg-amber-500/20 text-white border border-amber-500/40'
-                  : 'text-gray-400 hover:text-white hover:bg-white/5 border border-transparent'
-              }`}
-            >
-              <ArrowUpDown className={`w-4 h-4 ${activeTab === 'reorder' ? 'text-amber-400' : ''}`} />
-              <span>Reordenar Ordem</span>
+              <LayoutList className={`w-4 h-4 ${activeTab === 'buttons' ? 'text-purple-400' : 'text-gray-400'}`} />
+              <span>Botões</span>
             </button>
           </nav>
 
         </div>
 
-        {/* Sidebar Footer Info */}
-        <div className="pt-4 border-t border-white/10 space-y-3">
-          <div className="p-3 rounded-xl bg-white/5 border border-white/10 text-[11px] space-y-1">
-            <div className="flex items-center gap-1.5 text-green-400 font-semibold">
-              <FileCode className="w-3.5 h-3.5" />
-              <span>Armazenamento Instantâneo</span>
-            </div>
-            <p className="text-[10px] text-gray-400">
-              Alterações salvas instantaneamente no diretório <code className="text-gray-300">data/</code>.
-            </p>
-          </div>
-
+        {/* Sidebar Footer Link */}
+        <div className="pt-4 border-t border-white/[0.08]">
           <Link
             href="/"
             target="_blank"
-            className="w-full py-2.5 px-3 rounded-xl bg-white text-dark-900 font-bold text-xs hover:bg-gray-200 flex items-center justify-center gap-1.5 shadow-lg transition"
+            className="w-full py-2 px-3 rounded-xl border border-white/10 hover:border-white/20 bg-white/[0.02] hover:bg-white/[0.06] text-gray-200 hover:text-white font-medium text-xs flex items-center justify-center gap-2 transition"
           >
-            <Eye className="w-4 h-4" />
-            <span>Ver Portal ao Vivo</span>
+            <Eye className="w-3.5 h-3.5" />
+            <span>Ver site público</span>
+            <ExternalLink className="w-3 h-3 text-gray-500 ml-auto" />
           </Link>
         </div>
       </aside>
 
       {/* Floating Mobile Bottom Navigation Bar */}
-      <nav className="md:hidden fixed bottom-4 left-4 right-4 z-50 bg-[#0f111a]/95 backdrop-blur-xl border border-white/15 rounded-2xl shadow-2xl p-2 flex items-center justify-around">
+      <nav className="md:hidden fixed bottom-4 left-4 right-4 z-40 bg-[#0e1017]/95 backdrop-blur-xl border border-white/15 rounded-2xl shadow-2xl p-1.5 flex items-center justify-around">
         <button
+          type="button"
           onClick={() => setActiveTab('metrics')}
-          className={`flex flex-col items-center gap-1 px-2.5 py-1.5 rounded-xl text-[10px] font-bold transition ${
+          className={`flex flex-col items-center gap-1 px-2 py-1 rounded-xl text-[10px] font-semibold transition ${
             activeTab === 'metrics'
-              ? 'bg-brand-purple/20 text-brand-purple border border-brand-purple/30'
+              ? 'text-white bg-white/10'
               : 'text-gray-400 hover:text-white'
           }`}
         >
@@ -1556,10 +657,11 @@ export default function AdminDashboard() {
         </button>
 
         <button
+          type="button"
           onClick={() => setActiveTab('profile')}
-          className={`flex flex-col items-center gap-1 px-2.5 py-1.5 rounded-xl text-[10px] font-bold transition ${
+          className={`flex flex-col items-center gap-1 px-2 py-1 rounded-xl text-[10px] font-semibold transition ${
             activeTab === 'profile'
-              ? 'bg-brand-cyan/20 text-brand-cyan border border-brand-cyan/30'
+              ? 'text-white bg-white/10'
               : 'text-gray-400 hover:text-white'
           }`}
         >
@@ -1568,10 +670,24 @@ export default function AdminDashboard() {
         </button>
 
         <button
+          type="button"
+          onClick={() => setActiveTab('gallery')}
+          className={`flex flex-col items-center gap-1 px-2 py-1 rounded-xl text-[10px] font-semibold transition ${
+            activeTab === 'gallery'
+              ? 'text-white bg-white/10'
+              : 'text-gray-400 hover:text-white'
+          }`}
+        >
+          <ImageIcon className="w-4 h-4" />
+          <span>Galeria</span>
+        </button>
+
+        <button
+          type="button"
           onClick={() => setActiveTab('socials')}
-          className={`flex flex-col items-center gap-1 px-2.5 py-1.5 rounded-xl text-[10px] font-bold transition ${
+          className={`flex flex-col items-center gap-1 px-2 py-1 rounded-xl text-[10px] font-semibold transition ${
             activeTab === 'socials'
-              ? 'bg-brand-pink/20 text-brand-pink border border-brand-pink/30'
+              ? 'text-white bg-white/10'
               : 'text-gray-400 hover:text-white'
           }`}
         >
@@ -1580,210 +696,142 @@ export default function AdminDashboard() {
         </button>
 
         <button
+          type="button"
           onClick={() => setActiveTab('buttons')}
-          className={`flex flex-col items-center gap-1 px-2.5 py-1.5 rounded-xl text-[10px] font-bold transition ${
+          className={`flex flex-col items-center gap-1 px-2 py-1 rounded-xl text-[10px] font-semibold transition ${
             activeTab === 'buttons'
-              ? 'bg-purple-600/20 text-purple-400 border border-purple-500/30'
+              ? 'text-white bg-white/10'
               : 'text-gray-400 hover:text-white'
           }`}
         >
-          <Edit3 className="w-4 h-4" />
+          <LayoutList className="w-4 h-4" />
           <span>Botões</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('reorder')}
-          className={`flex flex-col items-center gap-1 px-2.5 py-1.5 rounded-xl text-[10px] font-bold transition ${
-            activeTab === 'reorder'
-              ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
-              : 'text-gray-400 hover:text-white'
-          }`}
-        >
-          <ArrowUpDown className="w-4 h-4" />
-          <span>Ordem</span>
         </button>
       </nav>
 
       {/* Main Content Area */}
-      <div className="flex-1 p-4 sm:p-6 md:p-8 max-w-6xl mx-auto w-full">
+      <main className="flex-1 p-4 sm:p-6 md:p-8 max-w-5xl mx-auto w-full">
         
-        {/* Top Header Mobile / Quick Bar */}
-        <header className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-white/10">
-          <div className="flex items-center gap-3">
+        {/* Mobile Top Header */}
+        <header className="flex md:hidden items-center justify-between gap-3 mb-6 pb-4 border-b border-white/[0.08]">
+          <div className="flex items-center gap-2.5">
             <Link
               href="/"
-              className="md:hidden w-9 h-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-gray-300"
+              className="w-8 h-8 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-gray-300"
             >
               <ArrowLeft className="w-4 h-4" />
             </Link>
             <div>
-              <h1 className="text-xl font-bold tracking-tight text-white">
-                {activeTab === 'metrics' && 'Métricas & Analytics'}
-                {activeTab === 'profile' && 'Editar Perfil & Fotos'}
-                {activeTab === 'socials' && 'Gerenciador de Redes Sociais'}
-                {activeTab === 'buttons' && 'Criar & Modificar Botões'}
-                {activeTab === 'reorder' && 'Reordenar Ordem dos Botões'}
-              </h1>
-              <p className="text-xs text-gray-400 mt-0.5">
-                Gerenciando {profile.name} ({profile.handle})
+              <h1 className="text-sm font-bold text-white tracking-tight">Covilink Admin</h1>
+              <p className="text-[10px] text-gray-400">
+                {activeTab === 'metrics' && 'Métricas'}
+                {activeTab === 'profile' && 'Perfil'}
+                {activeTab === 'gallery' && 'Galeria'}
+                {activeTab === 'socials' && 'Redes'}
+                {activeTab === 'buttons' && 'Botões'}
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 self-end sm:self-auto">
-            {activeTab === 'metrics' && (
-              <button
-                onClick={fetchMetrics}
-                disabled={loading}
-                className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-semibold text-gray-300 hover:text-white flex items-center gap-2 transition disabled:opacity-50"
-              >
-                <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-                <span>Atualizar</span>
-              </button>
-            )}
-
-            {activeTab === 'profile' && (
-              <button
-                onClick={handleSaveProfile}
-                disabled={savingProfile}
-                className="px-4 py-2 rounded-xl bg-gradient-to-r from-brand-cyan to-brand-purple text-white font-bold text-xs hover:opacity-90 flex items-center gap-1.5 shadow-lg transition disabled:opacity-50"
-              >
-                {savingProfile ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                <span>Salvar Perfil</span>
-              </button>
-            )}
-
-            {activeTab === 'socials' && (
-              <button
-                onClick={handleSaveSocials}
-                disabled={savingSocials}
-                className="px-4 py-2 rounded-xl bg-gradient-to-r from-brand-pink to-brand-purple text-white font-bold text-xs hover:opacity-90 flex items-center gap-1.5 shadow-lg shadow-pink-500/20 transition disabled:opacity-50"
-              >
-                {savingSocials ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                <span>Salvar Redes</span>
-              </button>
-            )}
-
-            {(activeTab === 'buttons' || activeTab === 'reorder') && (
-              <button
-                onClick={() => handleSaveLinks()}
-                disabled={savingLinks}
-                className="px-4 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-brand-pink text-white font-bold text-xs hover:opacity-90 flex items-center gap-1.5 shadow-lg transition disabled:opacity-50"
-              >
-                {savingLinks ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                <span>Salvar Botões</span>
-              </button>
-            )}
-
-            <Link
-              href="/"
-              target="_blank"
-              className="md:hidden px-3 py-1.5 rounded-xl bg-white text-dark-900 font-bold text-xs hover:bg-gray-200 flex items-center gap-1.5 shadow-md transition"
-            >
-              <Eye className="w-3.5 h-3.5" />
-              <span>Ver Site</span>
-            </Link>
-          </div>
+          <Link
+            href="/"
+            target="_blank"
+            className="px-2.5 py-1.5 rounded-xl border border-white/10 bg-white/5 text-[11px] font-medium text-gray-200 flex items-center gap-1.5"
+          >
+            <Eye className="w-3.5 h-3.5" />
+            <span>Ver site</span>
+          </Link>
         </header>
-
-        {/* Global Notifications */}
-        {profileSaveSuccess && (
-          <div className="mb-6 bg-green-500/20 border border-green-500/40 text-green-200 text-xs px-4 py-2.5 rounded-xl flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 text-green-400" />
-            <span>Informações e fotos do perfil salvas com sucesso!</span>
-          </div>
-        )}
-
-        {socialsSaveSuccess && (
-          <div className="mb-6 bg-green-500/20 border border-green-500/40 text-green-200 text-xs px-4 py-2.5 rounded-xl flex items-center gap-2">
-            <Check className="w-4 h-4 text-green-400" />
-            <span>Redes sociais salvas no arquivo JSON com sucesso!</span>
-          </div>
-        )}
-
-        {linksSaveSuccess && (
-          <div className="mb-6 bg-green-500/20 border border-green-500/40 text-green-200 text-xs px-4 py-2.5 rounded-xl flex items-center gap-2">
-            <Check className="w-4 h-4 text-green-400" />
-            <span>Configuração e ordem dos botões salvas com sucesso!</span>
-          </div>
-        )}
 
         {/* TAB 1: METRICS */}
         {activeTab === 'metrics' && (
           <div className="space-y-6">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              
-              <div className="glass-card rounded-2xl p-5 border border-white/10 relative overflow-hidden">
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Total de Cliques</span>
-                  <div className="w-9 h-9 rounded-xl bg-pink-500/10 border border-pink-500/20 flex items-center justify-center">
-                    <MousePointerClick className="w-4 h-4 text-pink-400" />
-                  </div>
-                </div>
-                <div className="text-3xl font-black text-white tracking-tight">
-                  {loading ? '...' : metrics?.totalClicks || 0}
-                </div>
-                <div className="flex items-center gap-1.5 text-[11px] text-pink-400 font-semibold mt-2">
-                  <TrendingUp className="w-3.5 h-3.5" />
-                  <span>+24.5% vs semana anterior</span>
-                </div>
+            <div className="flex items-center justify-between pb-4 border-b border-white/[0.08]">
+              <div>
+                <h2 className="text-lg font-bold text-white tracking-tight flex items-center gap-2">
+                  <BarChart3 className="w-5 h-5 text-brand-purple" />
+                  <span>Métricas & Analytics</span>
+                </h2>
+                <p className="text-xs text-gray-400 mt-1">
+                  Acompanhe cliques e visitantes do seu portal em tempo real.
+                </p>
               </div>
 
-              <div className="glass-card rounded-2xl p-5 border border-white/10 relative overflow-hidden">
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Visitantes Únicos</span>
-                  <div className="w-9 h-9 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center">
-                    <Users className="w-4 h-4 text-purple-400" />
-                  </div>
-                </div>
-                <div className="text-3xl font-black text-white tracking-tight">
-                  {loading ? '...' : metrics?.uniqueVisitors || 0}
-                </div>
-                <div className="text-[11px] text-gray-400 mt-2">
-                  Est. baseada em sessão & IP
-                </div>
-              </div>
-
-              <div className="glass-card rounded-2xl p-5 border border-white/10 relative overflow-hidden">
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Top Link Clicado</span>
-                  <div className="w-9 h-9 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center">
-                    <Zap className="w-4 h-4 text-cyan-400" />
-                  </div>
-                </div>
-                <div className="text-sm font-bold text-cyan-300 truncate">
-                  {loading ? '...' : metrics?.topPerformingLink?.title || 'Nenhum ainda'}
-                </div>
-                <div className="text-xs font-semibold text-gray-400 mt-1">
-                  {metrics?.topPerformingLink ? `${metrics.topPerformingLink.clicks} cliques acumulados` : '-'}
-                </div>
-              </div>
-
-              <div className="glass-card rounded-2xl p-5 border border-white/10 relative overflow-hidden">
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Taxa de Engajamento</span>
-                  <div className="w-9 h-9 rounded-xl bg-green-500/10 border border-green-500/20 flex items-center justify-center">
-                    <TrendingUp className="w-4 h-4 text-green-400" />
-                  </div>
-                </div>
-                <div className="text-3xl font-black text-white tracking-tight">
-                  84.2%
-                </div>
-                <div className="text-[11px] text-green-400 font-semibold mt-2">
-                  Alta taxa de conversão visual
-                </div>
-              </div>
-
+              <button
+                type="button"
+                onClick={fetchMetrics}
+                disabled={loading}
+                className="px-3 py-1.5 rounded-xl border border-white/10 hover:bg-white/5 text-xs font-medium text-gray-300 hover:text-white flex items-center gap-1.5 transition"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+                <span>Atualizar</span>
+              </button>
             </div>
 
+            {/* Metrics Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+              <div className="rounded-2xl p-4 border border-white/[0.08] bg-[#0e1017]">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[11px] font-medium text-gray-400 uppercase tracking-wider">Total de Cliques</span>
+                  <MousePointerClick className="w-4 h-4 text-brand-pink" />
+                </div>
+                <div className="text-2xl font-bold text-white tracking-tight">
+                  {loading ? '...' : metrics?.totalClicks || 0}
+                </div>
+                <div className="flex items-center gap-1 text-[11px] text-brand-pink mt-1 font-medium">
+                  <TrendingUp className="w-3 h-3" />
+                  <span>Cliques registrados</span>
+                </div>
+              </div>
+
+              <div className="rounded-2xl p-4 border border-white/[0.08] bg-[#0e1017]">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[11px] font-medium text-gray-400 uppercase tracking-wider">Visitantes Únicos</span>
+                  <Users className="w-4 h-4 text-brand-purple" />
+                </div>
+                <div className="text-2xl font-bold text-white tracking-tight">
+                  {loading ? '...' : metrics?.uniqueVisitors || 0}
+                </div>
+                <div className="text-[11px] text-gray-400 mt-1">
+                  Estimativa por sessão
+                </div>
+              </div>
+
+              <div className="rounded-2xl p-4 border border-white/[0.08] bg-[#0e1017]">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[11px] font-medium text-gray-400 uppercase tracking-wider">Top Link</span>
+                  <Zap className="w-4 h-4 text-brand-cyan" />
+                </div>
+                <div className="text-sm font-bold text-white truncate">
+                  {loading ? '...' : metrics?.topPerformingLink?.title || 'Nenhum ainda'}
+                </div>
+                <div className="text-[11px] text-gray-400 mt-1">
+                  {metrics?.topPerformingLink ? `${metrics.topPerformingLink.clicks} cliques` : '-'}
+                </div>
+              </div>
+
+              <div className="rounded-2xl p-4 border border-white/[0.08] bg-[#0e1017]">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[11px] font-medium text-gray-400 uppercase tracking-wider">Engajamento</span>
+                  <TrendingUp className="w-4 h-4 text-emerald-400" />
+                </div>
+                <div className="text-2xl font-bold text-white tracking-tight">
+                  84.2%
+                </div>
+                <div className="text-[11px] text-emerald-400 mt-1 font-medium">
+                  Taxa de conversão visual
+                </div>
+              </div>
+            </div>
+
+            {/* Tables & Breakdowns */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div className="lg:col-span-2 glass-card rounded-2xl p-6 border border-white/10">
-                <div className="flex items-center justify-between mb-5">
-                  <div>
-                    <h3 className="text-base font-bold text-white">Detalhamento de Cliques por Link</h3>
-                    <p className="text-xs text-gray-400">Contagem de cliques individuais para cada botão</p>
-                  </div>
-                  <span className="text-xs font-semibold text-brand-purple bg-brand-purple/10 px-2.5 py-1 rounded-full border border-brand-purple/20">
+              
+              {/* Clicks Table */}
+              <div className="lg:col-span-2 rounded-2xl p-5 border border-white/[0.08] bg-[#0e1017]">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-sm font-semibold text-white">Cliques por Link</h3>
+                  <span className="text-[11px] text-gray-400">
                     {metrics ? Object.keys(metrics.clicksByLink).length : 0} links rastreados
                   </span>
                 </div>
@@ -1791,13 +839,13 @@ export default function AdminDashboard() {
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs">
                     <thead>
-                      <tr className="border-b border-white/10 text-gray-400 font-semibold uppercase tracking-wider">
-                        <th className="pb-3">Link / Mídia</th>
-                        <th className="pb-3 text-center">Cliques</th>
-                        <th className="pb-3 text-right">Participação</th>
+                      <tr className="border-b border-white/[0.08] text-gray-400 font-medium">
+                        <th className="pb-2.5">Link</th>
+                        <th className="pb-2.5 text-center">Cliques</th>
+                        <th className="pb-2.5 text-right">Participação</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-white/5">
+                    <tbody className="divide-y divide-white/[0.04]">
                       {metrics && Object.values(metrics.clicksByLink).length > 0 ? (
                         Object.values(metrics.clicksByLink)
                           .sort((a, b) => b.clicks - a.clicks)
@@ -1807,23 +855,23 @@ export default function AdminDashboard() {
                               : 0;
 
                             return (
-                              <tr key={item.id} className="hover:bg-white/5 transition">
-                                <td className="py-3 pr-2">
-                                  <div className="font-semibold text-white truncate max-w-xs">{item.title}</div>
+                              <tr key={item.id} className="hover:bg-white/[0.02] transition">
+                                <td className="py-2.5 pr-2">
+                                  <div className="font-medium text-white truncate max-w-xs">{item.title}</div>
                                   <div className="text-[10px] text-gray-500 truncate max-w-xs">{item.url}</div>
                                 </td>
-                                <td className="py-3 px-2 text-center font-bold text-brand-pink">
+                                <td className="py-2.5 px-2 text-center font-bold text-brand-pink">
                                   {item.clicks}
                                 </td>
-                                <td className="py-3 pl-2 text-right">
+                                <td className="py-2.5 pl-2 text-right">
                                   <div className="flex items-center justify-end gap-2">
-                                    <div className="w-16 h-1.5 bg-dark-700 rounded-full overflow-hidden">
+                                    <div className="w-16 h-1 bg-white/10 rounded-full overflow-hidden">
                                       <div
-                                        className="h-full bg-gradient-to-r from-brand-pink to-brand-purple rounded-full"
+                                        className="h-full bg-brand-pink rounded-full"
                                         style={{ width: `${percent}%` }}
                                       />
                                     </div>
-                                    <span className="font-mono text-gray-300 w-8">{percent}%</span>
+                                    <span className="font-mono text-gray-400 w-7">{percent}%</span>
                                   </div>
                                 </td>
                               </tr>
@@ -1832,7 +880,7 @@ export default function AdminDashboard() {
                       ) : (
                         <tr>
                           <td colSpan={3} className="py-6 text-center text-gray-500">
-                            Nenhum clique registrado ainda. Clique nos botões para testar!
+                            Nenhum clique registrado ainda.
                           </td>
                         </tr>
                       )}
@@ -1841,427 +889,485 @@ export default function AdminDashboard() {
                 </div>
               </div>
 
-              <div className="space-y-6">
-                <div className="glass-card rounded-2xl p-6 border border-white/10">
-                  <h3 className="text-base font-bold text-white mb-1">Origem por Dispositivo</h3>
-                  <p className="text-xs text-gray-400 mb-4">Dispositivos usados pelos visitantes</p>
+              {/* Device Breakdown */}
+              <div className="rounded-2xl p-5 border border-white/[0.08] bg-[#0e1017] space-y-4">
+                <div>
+                  <h3 className="text-sm font-semibold text-white">Dispositivos</h3>
+                  <p className="text-[11px] text-gray-400 mt-0.5">Origem dos acessos</p>
+                </div>
 
-                  {metrics && (
-                    <div className="space-y-3">
-                      <div>
-                        <div className="flex justify-between text-xs mb-1 font-semibold">
-                          <span className="flex items-center gap-1.5 text-gray-300">
-                            <Smartphone className="w-4 h-4 text-brand-pink" /> Mobile (Smartphone)
-                          </span>
-                          <span className="text-brand-pink font-bold">
-                            {metrics.totalClicks > 0
-                              ? Math.round((metrics.deviceBreakdown.mobile / metrics.totalClicks) * 100)
-                              : 0}%
-                          </span>
-                        </div>
-                        <div className="w-full h-2 bg-dark-700 rounded-full overflow-hidden">
-                          <div
-                            className="h-full bg-brand-pink rounded-full transition-all"
-                            style={{
-                              width: `${
-                                metrics.totalClicks > 0
-                                  ? (metrics.deviceBreakdown.mobile / metrics.totalClicks) * 100
-                                  : 0
-                              }%`,
-                            }}
-                          />
-                        </div>
+                {metrics && (
+                  <div className="space-y-3 pt-1">
+                    <div>
+                      <div className="flex justify-between text-xs mb-1">
+                        <span className="flex items-center gap-1.5 text-gray-300">
+                          <Smartphone className="w-3.5 h-3.5 text-brand-pink" /> Mobile
+                        </span>
+                        <span className="font-bold text-white">
+                          {metrics.totalClicks > 0
+                            ? Math.round((metrics.deviceBreakdown.mobile / metrics.totalClicks) * 100)
+                            : 0}%
+                        </span>
                       </div>
-
-                      <div>
-                        <div className="flex justify-between text-xs mb-1 font-semibold">
-                          <span className="flex items-center gap-1.5 text-gray-300">
-                            <Monitor className="w-4 h-4 text-brand-cyan" /> Desktop (Computador)
-                          </span>
-                          <span className="text-brand-cyan font-bold">
-                            {metrics.totalClicks > 0
-                              ? Math.round((metrics.deviceBreakdown.desktop / metrics.totalClicks) * 100)
-                              : 0}%
-                          </span>
-                        </div>
-                        <div className="w-full h-2 bg-dark-700 rounded-full overflow-hidden">
-                          <div
-                            className="h-full bg-brand-cyan rounded-full transition-all"
-                            style={{
-                              width: `${
-                                metrics.totalClicks > 0
-                                  ? (metrics.deviceBreakdown.desktop / metrics.totalClicks) * 100
-                                  : 0
-                              }%`,
-                            }}
-                          />
-                        </div>
-                      </div>
-
-                      <div>
-                        <div className="flex justify-between text-xs mb-1 font-semibold">
-                          <span className="flex items-center gap-1.5 text-gray-300">
-                            <Tablet className="w-4 h-4 text-brand-purple" /> Tablet
-                          </span>
-                          <span className="text-brand-purple font-bold">
-                            {metrics.totalClicks > 0
-                              ? Math.round((metrics.deviceBreakdown.tablet / metrics.totalClicks) * 100)
-                              : 0}%
-                          </span>
-                        </div>
-                        <div className="w-full h-2 bg-dark-700 rounded-full overflow-hidden">
-                          <div
-                            className="h-full bg-brand-purple rounded-full transition-all"
-                            style={{
-                              width: `${
-                                metrics.totalClicks > 0
-                                  ? (metrics.deviceBreakdown.tablet / metrics.totalClicks) * 100
-                                  : 0
-                              }%`,
-                            }}
-                          />
-                        </div>
+                      <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-brand-pink rounded-full"
+                          style={{
+                            width: `${
+                              metrics.totalClicks > 0
+                                ? (metrics.deviceBreakdown.mobile / metrics.totalClicks) * 100
+                                : 0
+                            }%`,
+                          }}
+                        />
                       </div>
                     </div>
-                  )}
-                </div>
+
+                    <div>
+                      <div className="flex justify-between text-xs mb-1">
+                        <span className="flex items-center gap-1.5 text-gray-300">
+                          <Monitor className="w-3.5 h-3.5 text-brand-cyan" /> Desktop
+                        </span>
+                        <span className="font-bold text-white">
+                          {metrics.totalClicks > 0
+                            ? Math.round((metrics.deviceBreakdown.desktop / metrics.totalClicks) * 100)
+                            : 0}%
+                        </span>
+                      </div>
+                      <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-brand-cyan rounded-full"
+                          style={{
+                            width: `${
+                              metrics.totalClicks > 0
+                                ? (metrics.deviceBreakdown.desktop / metrics.totalClicks) * 100
+                                : 0
+                            }%`,
+                          }}
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <div className="flex justify-between text-xs mb-1">
+                        <span className="flex items-center gap-1.5 text-gray-300">
+                          <Tablet className="w-3.5 h-3.5 text-brand-purple" /> Tablet
+                        </span>
+                        <span className="font-bold text-white">
+                          {metrics.totalClicks > 0
+                            ? Math.round((metrics.deviceBreakdown.tablet / metrics.totalClicks) * 100)
+                            : 0}%
+                        </span>
+                      </div>
+                      <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-brand-purple rounded-full"
+                          style={{
+                            width: `${
+                              metrics.totalClicks > 0
+                                ? (metrics.deviceBreakdown.tablet / metrics.totalClicks) * 100
+                                : 0
+                            }%`,
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
+
             </div>
           </div>
         )}
 
-        {/* TAB 2: PROFILE MANAGER */}
+        {/* TAB 2: PROFILE */}
         {activeTab === 'profile' && (
-          <div className="glass-card rounded-2xl p-6 border border-white/10 space-y-6">
-            <div className="flex items-center justify-between pb-4 border-b border-white/10">
-              <div>
-                <h3 className="text-base font-bold text-white flex items-center gap-2">
-                  <User className="w-5 h-5 text-brand-cyan" />
-                  <span>Editar Perfil & Fotos</span>
-                </h3>
-                <p className="text-xs text-gray-400 mt-1">
-                  Modifique o nome, arroba (@), foto de perfil, foto de capa e descrições do perfil.
-                </p>
-              </div>
-
-              <button
-                onClick={handleSaveProfile}
-                disabled={savingProfile}
-                className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-brand-cyan to-brand-purple text-white font-bold text-xs hover:opacity-90 flex items-center gap-2 shadow-lg transition disabled:opacity-50"
-              >
-                {savingProfile ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                <span>Salvar Alterações</span>
-              </button>
+          <div className="space-y-6">
+            
+            {/* Header */}
+            <div className="pb-4 border-b border-white/[0.08]">
+              <h2 className="text-lg font-bold text-white tracking-tight flex items-center gap-2">
+                <User className="w-5 h-5 text-brand-cyan" />
+                <span>Editar Perfil</span>
+              </h2>
+              <p className="text-xs text-gray-400 mt-1">
+                Configure as informações visuais e de contato do seu perfil.
+              </p>
             </div>
 
-            {/* Profile Live Preview Card */}
-            <div className="p-4 rounded-2xl bg-white/5 border border-white/10 flex flex-col items-center relative overflow-hidden">
-              <div className="w-full h-28 rounded-xl relative overflow-hidden mb-[-36px] bg-dark-800 border border-white/10">
-                {profile.coverImageUrl && profile.coverImageUrl.trim() !== '' ? (
+            {/* Profile Live Card Preview */}
+            <div className="rounded-2xl border border-white/[0.08] bg-[#0e1017] p-5 flex flex-col items-center relative overflow-hidden">
+              
+              {/* Banner Cover Box */}
+              <div className="w-full h-32 rounded-xl relative overflow-hidden mb-[-40px] bg-dark-900 border border-white/10 flex items-center justify-center">
+                {hasCoverImage ? (
                   /* eslint-disable-next-line @next/next/no-img-element */
                   <img
                     src={profile.coverImageUrl}
-                    alt="Previa da Capa"
+                    alt="Capa do Perfil"
                     className="absolute inset-0 w-full h-full"
                     style={{
                       objectPosition: profile.coverPosition || '50% 50%',
-                      objectFit: profile.coverFit || 'cover',
+                      objectFit: profile.coverFit || 'contain',
                     }}
                     onError={(e) => {
                       (e.currentTarget as HTMLElement).style.display = 'none';
                     }}
                   />
                 ) : (
-                  <div className="w-full h-full bg-gradient-to-br from-purple-950/60 via-dark-800 to-pink-950/40" />
+                  <div className="w-full h-full bg-gradient-to-br from-white/[0.05] via-[#0b0c13] to-white/[0.02] flex items-center justify-center">
+                    <span className="text-[11px] text-gray-500 font-medium">Gradiente escuro padrão ativo</span>
+                  </div>
                 )}
-                <div className="absolute inset-0 bg-gradient-to-t from-[#08090d] via-transparent to-black/20 pointer-events-none" />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#08090d]/80 via-transparent to-black/20 pointer-events-none" />
               </div>
-              <div className="w-20 h-20 rounded-full overflow-hidden relative bg-dark-800 shadow-xl relative z-10 border-2 border-white/15 shrink-0">
+
+              {/* Avatar Circle */}
+              <div className="w-20 h-20 rounded-full overflow-hidden bg-dark-900 border-2 border-white/20 shadow-xl relative z-10 shrink-0">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={profile.avatarUrl || INITIAL_PROFILE.avatarUrl}
-                  alt="Previa do Perfil"
+                  alt={profile.name}
                   className="w-full h-full object-cover"
                   onError={(e) => {
                     (e.currentTarget as HTMLImageElement).src = INITIAL_PROFILE.avatarUrl;
                   }}
                 />
               </div>
-              <div className="text-center mt-2">
+
+              {/* Name & details */}
+              <div className="text-center mt-3 space-y-1">
                 <div className="flex items-center justify-center gap-1.5">
-                  <h4 className="font-bold text-white text-base">{profile.name || 'Nome'}</h4>
+                  <h3 className="text-base font-bold text-white">{profile.name || 'Seu Nome'}</h3>
                   {profile.isVerified && (
                     /* eslint-disable-next-line @next/next/no-img-element */
                     <img
                       src="/images/verify.webp"
                       alt="Verificado"
-                      className="w-4 h-4 object-contain shrink-0 drop-shadow-sm select-none"
+                      className="w-4 h-4 object-contain shrink-0"
                       onError={(e) => {
                         (e.currentTarget as HTMLElement).style.display = 'none';
                       }}
                     />
                   )}
                 </div>
+
                 {profile.showHandle !== false && (
-                  <p className="text-xs text-gray-400 font-medium">{profile.handle || '@handle'}</p>
+                  <p className="text-xs text-gray-400 font-mono">{profile.handle || '@usuario'}</p>
                 )}
+
                 {profile.showBio !== false && profile.bio && (
-                  <p className="text-xs text-gray-300 mt-1 max-w-xs">{profile.bio}</p>
+                  <p className="text-xs text-gray-300 max-w-sm mx-auto pt-0.5">{profile.bio}</p>
                 )}
               </div>
+
             </div>
 
-            {/* Profile Form Fields */}
+            {/* Photo Selection Area (CENTRALIZED IN GALLERY) */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="text-xs font-bold text-gray-300">Nome Exibido</label>
-                  <button
-                    type="button"
-                    onClick={() => setProfile({ ...profile, isVerified: !profile.isVerified })}
-                    className={`px-2 py-0.5 rounded-full text-[10px] font-bold flex items-center gap-1.5 transition border ${
-                      profile.isVerified
-                        ? 'bg-blue-500/20 text-blue-300 border-blue-500/40 hover:bg-blue-500/30'
-                        : 'bg-gray-800 text-gray-400 border-gray-700 hover:bg-gray-700'
-                    }`}
-                    title={profile.isVerified ? 'Clique para ocultar o selo verificado' : 'Clique para exibir o selo verificado'}
-                  >
+              
+              {/* Foto de Perfil (Avatar) */}
+              <div className="p-4 rounded-2xl border border-white/[0.08] bg-[#0e1017] space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-semibold text-white">Foto de Perfil (Avatar)</label>
+                  <span className="text-[11px] text-gray-500">Proporção quadrada 1:1</span>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <div className="w-14 h-14 rounded-full overflow-hidden bg-dark-900 border border-white/15 shrink-0">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
-                      src="/images/verify.webp"
-                      alt="Selo Verificado"
-                      className="w-3 h-3 object-contain shrink-0"
+                      src={profile.avatarUrl || INITIAL_PROFILE.avatarUrl}
+                      alt="Avatar atual"
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        (e.currentTarget as HTMLImageElement).src = INITIAL_PROFILE.avatarUrl;
+                      }}
                     />
-                    <span>{profile.isVerified ? 'Selo Verificado Ativo' : 'Sem Verificado'}</span>
-                  </button>
+                  </div>
+
+                  <div className="flex flex-col gap-1.5 flex-1">
+                    <button
+                      type="button"
+                      onClick={openGalleryForAvatar}
+                      className="px-3 py-1.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 text-xs font-semibold text-white flex items-center justify-center gap-1.5 transition"
+                    >
+                      <ImageIcon className="w-3.5 h-3.5 text-brand-cyan" />
+                      <span>Escolher da Galeria</span>
+                    </button>
+
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={openCropForAvatar}
+                        className="px-2.5 py-1 rounded-lg border border-white/10 text-[11px] font-medium text-gray-300 hover:text-white hover:bg-white/5 transition flex-1 text-center"
+                      >
+                        Ajustar foto
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setProfile((p) => ({ ...p, avatarUrl: INITIAL_PROFILE.avatarUrl }))}
+                        className="px-2.5 py-1 rounded-lg border border-white/10 text-[11px] font-medium text-gray-400 hover:text-red-400 hover:bg-red-500/10 transition"
+                        title="Restaurar avatar padrão"
+                      >
+                        Padrão
+                      </button>
+                    </div>
+                  </div>
                 </div>
-                <input
-                  type="text"
-                  value={profile.name}
-                  onChange={(e) => setProfile({ ...profile, name: e.target.value })}
-                  placeholder="Seu Nome"
-                  className="w-full bg-dark-900 border border-white/15 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-brand-cyan"
-                />
               </div>
 
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="text-xs font-bold text-gray-300">Arroba / Handle (@)</label>
-                  <button
-                    type="button"
-                    onClick={() => setProfile({ ...profile, showHandle: profile.showHandle === false ? true : false })}
-                    className={`px-2 py-0.5 rounded-full text-[10px] font-bold flex items-center gap-1 transition border ${
-                      profile.showHandle !== false
-                        ? 'bg-green-500/20 text-green-300 border-green-500/40 hover:bg-green-500/30'
-                        : 'bg-gray-800 text-gray-400 border-gray-700 hover:bg-gray-700'
-                    }`}
-                    title={profile.showHandle !== false ? 'Clique para ocultar da página' : 'Clique para exibir na página'}
-                  >
-                    {profile.showHandle !== false ? (
-                      <>
-                        <Eye className="w-3 h-3 text-green-400" />
-                        <span>Visível</span>
-                      </>
+              {/* Foto de Capa (Banner) */}
+              <div className="p-4 rounded-2xl border border-white/[0.08] bg-[#0e1017] space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-semibold text-white">Foto de Capa (Header)</label>
+                  <span className="text-[11px] text-gray-500">
+                    {hasCoverImage ? 'Foto personalizada ativa' : 'Sem foto (Gradiente ativo)'}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <div className="w-14 h-14 rounded-xl overflow-hidden bg-dark-900 border border-white/15 shrink-0 flex items-center justify-center">
+                    {hasCoverImage ? (
+                      /* eslint-disable-next-line @next/next/no-img-element */
+                      <img
+                        src={profile.coverImageUrl}
+                        alt="Capa atual"
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          (e.currentTarget as HTMLElement).style.display = 'none';
+                        }}
+                      />
                     ) : (
-                      <>
-                        <EyeOff className="w-3 h-3 text-gray-400" />
-                        <span>Oculto</span>
-                      </>
+                      <div className="w-full h-full bg-gradient-to-br from-white/[0.05] via-[#0b0c13] to-white/[0.02]" />
                     )}
-                  </button>
+                  </div>
+
+                  <div className="flex flex-col gap-1.5 flex-1">
+                    <button
+                      type="button"
+                      onClick={openGalleryForCover}
+                      className="px-3 py-1.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 text-xs font-semibold text-white flex items-center justify-center gap-1.5 transition"
+                    >
+                      <ImageIcon className="w-3.5 h-3.5 text-brand-pink" />
+                      <span>Escolher da Galeria</span>
+                    </button>
+
+                    <div className="flex items-center gap-1.5">
+                      {hasCoverImage && (
+                        <button
+                          type="button"
+                          onClick={openCropForCover}
+                          className="px-2.5 py-1 rounded-lg border border-white/10 text-[11px] font-medium text-gray-300 hover:text-white hover:bg-white/5 transition flex-1 text-center"
+                        >
+                          Ajustar capa
+                        </button>
+                      )}
+
+                      {hasCoverImage && (
+                        <button
+                          type="button"
+                          onClick={() => setProfile((p) => ({ ...p, coverImageUrl: '' }))}
+                          className="px-2.5 py-1 rounded-lg border border-white/10 text-[11px] font-medium text-gray-400 hover:text-red-400 hover:bg-red-500/10 transition"
+                          title="Remover foto de capa para exibir gradiente dark"
+                        >
+                          Remover capa
+                        </button>
+                      )}
+                    </div>
+                  </div>
                 </div>
-                <input
-                  type="text"
-                  value={profile.handle}
-                  onChange={(e) => setProfile({ ...profile, handle: e.target.value })}
-                  placeholder="@seuusuario"
-                  className="w-full bg-dark-900 border border-white/15 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-brand-cyan"
-                />
               </div>
 
-              <div className="md:col-span-2">
-                <div className="flex items-center justify-between mb-1">
-                  <label className="text-xs font-bold text-gray-300">E-mail Profissional de Contato</label>
-                  <button
-                    type="button"
-                    onClick={() => setProfile({ ...profile, showContactEmail: profile.showContactEmail === false ? true : false })}
-                    className={`px-2 py-0.5 rounded-full text-[10px] font-bold flex items-center gap-1 transition border ${
-                      profile.showContactEmail !== false
-                        ? 'bg-green-500/20 text-green-300 border-green-500/40 hover:bg-green-500/30'
-                        : 'bg-gray-800 text-gray-400 border-gray-700 hover:bg-gray-700'
-                    }`}
-                    title={profile.showContactEmail !== false ? 'Clique para ocultar da página' : 'Clique para exibir na página'}
-                  >
-                    {profile.showContactEmail !== false ? (
-                      <>
-                        <Eye className="w-3 h-3 text-green-400" />
-                        <span>Visível</span>
-                      </>
-                    ) : (
-                      <>
-                        <EyeOff className="w-3 h-3 text-gray-400" />
-                        <span>Oculto</span>
-                      </>
-                    )}
-                  </button>
+            </div>
+
+            {/* Profile Fields */}
+            <div className="p-5 rounded-2xl border border-white/[0.08] bg-[#0e1017] space-y-4">
+              <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                Informações do Perfil
+              </h3>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                
+                {/* Nome */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-medium text-gray-300">Nome Exibido</label>
+                    <button
+                      type="button"
+                      onClick={() => setProfile((p) => ({ ...p, isVerified: !p.isVerified }))}
+                      className={`text-[10px] px-2 py-0.5 rounded-md border transition font-medium flex items-center gap-1 ${
+                        profile.isVerified
+                          ? 'bg-blue-500/15 text-blue-300 border-blue-500/30'
+                          : 'bg-white/5 text-gray-400 border-white/10'
+                      }`}
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src="/images/verify.webp" alt="V" className="w-3 h-3 object-contain" />
+                      <span>{profile.isVerified ? 'Verificado' : 'Sem selo'}</span>
+                    </button>
+                  </div>
+                  <input
+                    type="text"
+                    value={profile.name}
+                    onChange={(e) => setProfile((p) => ({ ...p, name: e.target.value }))}
+                    placeholder="Seu Nome"
+                    className="w-full bg-dark-900 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-brand-cyan transition"
+                  />
                 </div>
-                <input
-                  type="email"
-                  value={profile.contactEmail}
-                  onChange={(e) => setProfile({ ...profile, contactEmail: e.target.value })}
-                  placeholder="contato@exemplo.com"
-                  className="w-full bg-dark-900 border border-white/15 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-brand-cyan font-mono"
-                />
-              </div>
 
-              <div className="md:col-span-2">
-                <div className="flex items-center justify-between mb-1">
-                  <label className="text-xs font-bold text-gray-300">Bio / Descrição do Perfil</label>
-                  <button
-                    type="button"
-                    onClick={() => setProfile({ ...profile, showBio: profile.showBio === false ? true : false })}
-                    className={`px-2 py-0.5 rounded-full text-[10px] font-bold flex items-center gap-1 transition border ${
-                      profile.showBio !== false
-                        ? 'bg-green-500/20 text-green-300 border-green-500/40 hover:bg-green-500/30'
-                        : 'bg-gray-800 text-gray-400 border-gray-700 hover:bg-gray-700'
-                    }`}
-                    title={profile.showBio !== false ? 'Clique para ocultar da página' : 'Clique para exibir na página'}
-                  >
-                    {profile.showBio !== false ? (
-                      <>
-                        <Eye className="w-3 h-3 text-green-400" />
-                        <span>Visível</span>
-                      </>
-                    ) : (
-                      <>
-                        <EyeOff className="w-3 h-3 text-gray-400" />
-                        <span>Oculto</span>
-                      </>
-                    )}
-                  </button>
+                {/* Arroba */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-medium text-gray-300">Arroba / Handle (@)</label>
+                    <button
+                      type="button"
+                      onClick={() => setProfile((p) => ({ ...p, showHandle: p.showHandle === false ? true : false }))}
+                      className={`text-[10px] px-2 py-0.5 rounded-md border transition font-medium flex items-center gap-1 ${
+                        profile.showHandle !== false
+                          ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
+                          : 'bg-white/5 text-gray-400 border-white/10'
+                      }`}
+                    >
+                      {profile.showHandle !== false ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
+                      <span>{profile.showHandle !== false ? 'Visível' : 'Oculto'}</span>
+                    </button>
+                  </div>
+                  <input
+                    type="text"
+                    value={profile.handle}
+                    onChange={(e) => setProfile((p) => ({ ...p, handle: e.target.value }))}
+                    placeholder="@seuusuario"
+                    className="w-full bg-dark-900 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-brand-cyan transition font-mono"
+                  />
                 </div>
-                <textarea
-                  rows={2}
-                  value={profile.bio}
-                  onChange={(e) => setProfile({ ...profile, bio: e.target.value })}
-                  placeholder="Escreva sua bio (ex: Criadora de Conteúdo, Empreendedora...)"
-                  className="w-full bg-dark-900 border border-white/15 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-brand-cyan resize-none"
-                />
-              </div>
 
-              <div>
-                <ImageUploadField
-                  label="Foto de Perfil (Avatar)"
-                  value={profile.avatarUrl}
-                  onChange={(url) => setProfile({ ...profile, avatarUrl: url })}
-                  placeholder="https://... ou suba um arquivo"
-                  allowCrop={true}
-                  cropAspectRatio="square"
-                  cropTitle="Ajustar Foto de Perfil"
-                  helpText="Recomendado: proporção 1:1 (quadrada)."
-                />
-              </div>
+                {/* E-mail de Contato */}
+                <div className="sm:col-span-2 space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-medium text-gray-300">E-mail de Contato</label>
+                    <button
+                      type="button"
+                      onClick={() => setProfile((p) => ({ ...p, showContactEmail: p.showContactEmail === false ? true : false }))}
+                      className={`text-[10px] px-2 py-0.5 rounded-md border transition font-medium flex items-center gap-1 ${
+                        profile.showContactEmail !== false
+                          ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
+                          : 'bg-white/5 text-gray-400 border-white/10'
+                      }`}
+                    >
+                      {profile.showContactEmail !== false ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
+                      <span>{profile.showContactEmail !== false ? 'Visível' : 'Oculto'}</span>
+                    </button>
+                  </div>
+                  <input
+                    type="email"
+                    value={profile.contactEmail}
+                    onChange={(e) => setProfile((p) => ({ ...p, contactEmail: e.target.value }))}
+                    placeholder="contato@exemplo.com"
+                    className="w-full bg-dark-900 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-brand-cyan transition font-mono"
+                  />
+                </div>
 
-              <div>
-                <ImageUploadField
-                  label="Foto de Capa (Header / Banner)"
-                  value={profile.coverImageUrl || ''}
-                  onChange={(url) => setProfile({ ...profile, coverImageUrl: url })}
-                  placeholder="https://... ou suba um arquivo"
-                  allowCrop={true}
-                  cropAspectRatio="banner"
-                  showAvatarGuide={true}
-                  cropTitle="Ajustar Foto de Capa (Banner)"
-                  position={profile.coverPosition}
-                  onPositionChange={(pos) => setProfile({ ...profile, coverPosition: pos })}
-                  fit={profile.coverFit}
-                  onFitChange={(fit) => setProfile({ ...profile, coverFit: fit })}
-                  helpText="Deixe vazio para exibir o gradiente escuro elegante."
-                />
+                {/* Bio */}
+                <div className="sm:col-span-2 space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-medium text-gray-300">Bio / Descrição</label>
+                    <button
+                      type="button"
+                      onClick={() => setProfile((p) => ({ ...p, showBio: p.showBio === false ? true : false }))}
+                      className={`text-[10px] px-2 py-0.5 rounded-md border transition font-medium flex items-center gap-1 ${
+                        profile.showBio !== false
+                          ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
+                          : 'bg-white/5 text-gray-400 border-white/10'
+                      }`}
+                    >
+                      {profile.showBio !== false ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
+                      <span>{profile.showBio !== false ? 'Visível' : 'Oculto'}</span>
+                    </button>
+                  </div>
+                  <textarea
+                    rows={2}
+                    value={profile.bio}
+                    onChange={(e) => setProfile((p) => ({ ...p, bio: e.target.value }))}
+                    placeholder="Escreva sua bio..."
+                    className="w-full bg-dark-900 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-brand-cyan transition resize-none"
+                  />
+                </div>
+
               </div>
             </div>
 
-            <div className="pt-4 border-t border-white/10 flex justify-end">
-              <button
-                onClick={handleSaveProfile}
-                disabled={savingProfile}
-                className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-brand-cyan to-brand-purple text-white font-bold text-xs hover:opacity-90 flex items-center gap-2 shadow-lg transition disabled:opacity-50"
-              >
-                {savingProfile ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                <span>Salvar Perfil</span>
-              </button>
-            </div>
           </div>
         )}
 
-        {/* TAB 3: SOCIAL MEDIA MANAGER */}
+        {/* TAB 3: GALLERY (NEW MAIN SECTION) */}
+        {activeTab === 'gallery' && (
+          <GallerySection />
+        )}
+
+        {/* TAB 4: SOCIALS */}
         {activeTab === 'socials' && (
-          <div className="glass-card rounded-2xl p-6 border border-white/10 space-y-6">
+          <div className="space-y-6">
             
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-white/10">
+            {/* Header */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-white/[0.08]">
               <div>
-                <h3 className="text-base font-bold text-white flex items-center gap-2">
+                <h2 className="text-lg font-bold text-white tracking-tight flex items-center gap-2">
                   <Globe className="w-5 h-5 text-brand-pink" />
-                  <span>Configurar Botões de Rede Social</span>
-                </h3>
-                <p className="text-xs text-gray-400 mt-1 max-w-xl">
-                  Gerencie os ícones de redes sociais exibidos no topo do seu perfil.
+                  <span>Redes Sociais</span>
+                </h2>
+                <p className="text-xs text-gray-400 mt-1">
+                  Gerencie os ícones de redes sociais exibidos no topo do perfil.
                 </p>
               </div>
 
-              <div className="flex items-center gap-2 self-stretch sm:self-auto">
+              <div className="flex items-center gap-2">
                 <button
+                  type="button"
                   onClick={handleResetSocials}
-                  className="px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-semibold text-gray-300 hover:text-white flex items-center gap-1.5 transition"
+                  className="px-3 py-1.5 rounded-xl border border-white/10 text-xs font-medium text-gray-300 hover:text-white hover:bg-white/5 transition flex items-center gap-1.5"
                 >
                   <RotateCcw className="w-3.5 h-3.5" />
                   <span>Restaurar Padrão</span>
                 </button>
 
                 <button
+                  type="button"
                   onClick={() => addSocialItem()}
-                  className="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-xs font-bold text-white flex items-center gap-1.5 transition"
+                  className="px-3.5 py-1.5 rounded-xl bg-white text-dark-900 text-xs font-semibold hover:bg-gray-200 transition shadow flex items-center gap-1.5"
                 >
-                  <Plus className="w-4 h-4 text-brand-pink" />
+                  <Plus className="w-4 h-4" />
                   <span>Adicionar Rede</span>
-                </button>
-
-                <button
-                  onClick={handleSaveSocials}
-                  disabled={savingSocials}
-                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-brand-pink to-brand-purple text-white font-bold text-xs hover:opacity-90 flex items-center gap-1.5 shadow-lg shadow-pink-500/20 transition disabled:opacity-50"
-                >
-                  {savingSocials ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                  <span>Salvar Redes</span>
                 </button>
               </div>
             </div>
 
             {/* Quick Add Presets */}
             <div className="space-y-2">
-              <p className="text-xs font-semibold text-gray-400">Atalhos para Adicionar Rápido:</p>
-              <div className="flex flex-wrap gap-2">
+              <span className="text-[11px] font-medium text-gray-400 uppercase tracking-wider">Atalhos Rápidos:</span>
+              <div className="flex flex-wrap gap-1.5">
                 {[
-                  { platform: 'instagram', name: '+ Instagram' },
-                  { platform: 'youtube', name: '+ YouTube' },
-                  { platform: 'tiktok', name: '+ TikTok' },
-                  { platform: 'whatsapp', name: '+ WhatsApp' },
-                  { platform: 'twitter', name: '+ X (Twitter)' },
-                  { platform: 'spotify', name: '+ Spotify' },
-                  { platform: 'linkedin', name: '+ LinkedIn' },
-                  { platform: 'github', name: '+ GitHub' },
-                  { platform: 'threads', name: '+ Threads' },
-                  { platform: 'discord', name: '+ Discord' },
-                  { platform: 'telegram', name: '+ Telegram' },
-                  { platform: 'website', name: '+ Meu Site' },
+                  { platform: 'instagram', name: 'Instagram' },
+                  { platform: 'youtube', name: 'YouTube' },
+                  { platform: 'tiktok', name: 'TikTok' },
+                  { platform: 'whatsapp', name: 'WhatsApp' },
+                  { platform: 'twitter', name: 'X' },
+                  { platform: 'spotify', name: 'Spotify' },
+                  { platform: 'linkedin', name: 'LinkedIn' },
+                  { platform: 'github', name: 'GitHub' },
+                  { platform: 'discord', name: 'Discord' },
+                  { platform: 'telegram', name: 'Telegram' },
+                  { platform: 'website', name: 'Website' },
                 ].map((item) => (
                   <button
                     key={item.platform}
+                    type="button"
                     onClick={() => addSocialItem(item.platform as SocialLink['platform'])}
-                    className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-medium text-gray-300 hover:text-white flex items-center gap-1.5 transition"
+                    className="px-2.5 py-1 rounded-lg border border-white/10 bg-white/[0.02] hover:bg-white/[0.06] text-xs font-medium text-gray-300 hover:text-white flex items-center gap-1.5 transition"
                   >
                     <SocialIcon platform={item.platform} className="w-3.5 h-3.5 shrink-0" />
-                    <span>{item.name}</span>
+                    <span>+{item.name}</span>
                   </button>
                 ))}
               </div>
@@ -2270,49 +1376,53 @@ export default function AdminDashboard() {
             {/* Social Links List */}
             <div className="space-y-3 pt-2">
               {socialsList.length === 0 ? (
-                <div className="text-center py-10 text-gray-500 text-xs border border-dashed border-white/10 rounded-2xl">
-                  Nenhuma rede social configurada.
+                <div className="text-center py-12 text-gray-500 text-xs border border-dashed border-white/10 rounded-2xl bg-white/[0.01]">
+                  Nenhuma rede social cadastrada. Adicione uma rede acima.
                 </div>
               ) : (
                 socialsList.map((item, idx) => (
                   <div
                     key={item.id}
-                    className={`p-4 rounded-2xl border transition flex flex-col md:flex-row items-start md:items-center justify-between gap-4 ${
+                    className={`p-3.5 rounded-2xl border transition flex flex-col md:flex-row items-start md:items-center justify-between gap-3 ${
                       item.active !== false
-                        ? 'bg-white/5 border-white/15 shadow-md'
-                        : 'bg-black/40 border-white/5 opacity-60'
+                        ? 'bg-[#0e1017] border-white/10'
+                        : 'bg-black/30 border-white/[0.05] opacity-60'
                     }`}
                   >
-                    <div className="flex items-center gap-3 w-full md:w-auto">
-                      <div className="flex flex-col gap-1">
+                    <div className="flex items-center gap-2.5 w-full md:w-auto">
+                      {/* Move controls */}
+                      <div className="flex flex-col gap-0.5">
                         <button
+                          type="button"
                           onClick={() => moveSocialItem(idx, 'up')}
                           disabled={idx === 0}
-                          className="p-1 rounded bg-white/5 hover:bg-white/10 text-gray-400 disabled:opacity-20 hover:text-white transition"
+                          className="p-1 rounded text-gray-400 hover:text-white disabled:opacity-20 transition"
+                          title="Mover para cima"
                         >
                           <ArrowUp className="w-3.5 h-3.5" />
                         </button>
                         <button
+                          type="button"
                           onClick={() => moveSocialItem(idx, 'down')}
                           disabled={idx === socialsList.length - 1}
-                          className="p-1 rounded bg-white/5 hover:bg-white/10 text-gray-400 disabled:opacity-20 hover:text-white transition"
+                          className="p-1 rounded text-gray-400 hover:text-white disabled:opacity-20 transition"
+                          title="Mover para baixo"
                         >
                           <ArrowDown className="w-3.5 h-3.5" />
                         </button>
                       </div>
 
-                      <div className="w-12 h-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
-                        {getSocialIconComponent(item.platform)}
+                      {/* Icon */}
+                      <div className="w-9 h-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
+                        <SocialIcon platform={item.platform} className="w-4 h-4" />
                       </div>
 
-                      <div className="flex-1 md:w-40">
-                        <label className="text-[10px] text-gray-400 uppercase font-semibold block mb-1">
-                          Plataforma
-                        </label>
+                      {/* Platform Select */}
+                      <div className="flex-1 md:w-36">
                         <select
                           value={item.platform}
                           onChange={(e) => updateSocialItem(item.id, 'platform', e.target.value)}
-                          className="w-full bg-dark-900 border border-white/15 rounded-xl px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-brand-pink"
+                          className="w-full bg-dark-900 border border-white/10 rounded-xl px-2 py-1.5 text-xs text-white focus:outline-none focus:border-brand-pink"
                         >
                           {PLATFORM_OPTIONS.map((opt) => (
                             <option key={opt.value} value={opt.value} className="bg-dark-900 text-white">
@@ -2323,51 +1433,46 @@ export default function AdminDashboard() {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full md:flex-1">
-                      <div>
-                        <label className="text-[10px] text-gray-400 uppercase font-semibold block mb-1">
-                          Rótulo / Nome
-                        </label>
-                        <input
-                          type="text"
-                          value={item.title}
-                          onChange={(e) => updateSocialItem(item.id, 'title', e.target.value)}
-                          placeholder="Ex: Instagram"
-                          className="w-full bg-dark-900 border border-white/15 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-brand-pink"
-                        />
-                      </div>
+                    {/* Inputs */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 w-full md:flex-1">
+                      <input
+                        type="text"
+                        value={item.title}
+                        onChange={(e) => updateSocialItem(item.id, 'title', e.target.value)}
+                        placeholder="Nome / Rótulo"
+                        className="w-full bg-dark-900 border border-white/10 rounded-xl px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-brand-pink"
+                      />
 
-                      <div>
-                        <label className="text-[10px] text-gray-400 uppercase font-semibold block mb-1">
-                          URL do Perfil
-                        </label>
-                        <input
-                          type="text"
-                          value={item.url}
-                          onChange={(e) => updateSocialItem(item.id, 'url', e.target.value)}
-                          placeholder="https://..."
-                          className="w-full bg-dark-900 border border-white/15 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-brand-pink font-mono"
-                        />
-                      </div>
+                      <input
+                        type="text"
+                        value={item.url}
+                        onChange={(e) => updateSocialItem(item.id, 'url', e.target.value)}
+                        placeholder="https://..."
+                        className="w-full bg-dark-900 border border-white/10 rounded-xl px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-brand-pink font-mono"
+                      />
                     </div>
 
-                    <div className="flex items-center gap-2 self-end md:self-auto shrink-0 pt-2 md:pt-0 border-t md:border-0 border-white/10 w-full md:w-auto justify-end">
+                    {/* Actions */}
+                    <div className="flex items-center gap-2 self-end md:self-auto shrink-0 pt-1 md:pt-0">
                       <button
+                        type="button"
                         onClick={() => toggleSocialActive(item.id)}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition border ${
+                        className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition border ${
                           item.active !== false
-                            ? 'bg-green-500/20 text-green-300 border-green-500/40 hover:bg-green-500/30'
-                            : 'bg-gray-800 text-gray-400 border-gray-700 hover:bg-gray-700'
+                            ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
+                            : 'bg-white/5 text-gray-400 border-white/10'
                         }`}
                       >
                         {item.active !== false ? 'Ativo' : 'Oculto'}
                       </button>
 
                       <button
+                        type="button"
                         onClick={() => removeSocialItem(item.id)}
-                        className="p-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 transition"
+                        className="p-1.5 rounded-lg border border-red-500/20 text-red-400 hover:bg-red-500/10 transition"
+                        title="Excluir rede"
                       >
-                        <Trash2 className="w-4 h-4" />
+                        <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     </div>
                   </div>
@@ -2375,156 +1480,152 @@ export default function AdminDashboard() {
               )}
             </div>
 
-            <div className="pt-4 border-t border-white/10 flex items-center justify-between">
-              <span className="text-xs text-gray-400">
-                {socialsList.filter((s) => s.active !== false).length} redes ativas
-              </span>
-
-              <button
-                onClick={handleSaveSocials}
-                disabled={savingSocials}
-                className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-brand-pink to-brand-purple text-white font-bold text-xs hover:opacity-90 flex items-center gap-2 shadow-lg transition disabled:opacity-50"
-              >
-                {savingSocials ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                <span>Salvar Redes</span>
-              </button>
-            </div>
-
           </div>
         )}
 
-        {/* TAB 4: BUTTON MANAGER (CREATE & EDIT BUTTONS) */}
+        {/* TAB 5: BUTTONS (WITH BUILT-IN REORDERING) */}
         {activeTab === 'buttons' && (
-          <div className="glass-card rounded-2xl p-6 border border-white/10 space-y-6">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-white/10">
+          <div className="space-y-6">
+            
+            {/* Header */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-white/[0.08]">
               <div>
-                <h3 className="text-base font-bold text-white flex items-center gap-2">
-                  <Edit3 className="w-5 h-5 text-purple-400" />
-                  <span>Criar & Modificar Botões</span>
-                </h3>
-                <p className="text-xs text-gray-400 mt-1 max-w-xl">
-                  Crie novos botões com ou sem fotos (miniatura na esquerda ou card completo), altere textos e URLs.
+                <h2 className="text-lg font-bold text-white tracking-tight flex items-center gap-2">
+                  <LayoutList className="w-5 h-5 text-purple-400" />
+                  <span>Botões do Site</span>
+                </h2>
+                <p className="text-xs text-gray-400 mt-1">
+                  Crie, configure e reorganize os botões e cards visuais do seu portal.
                 </p>
               </div>
 
-              <div className="flex items-center gap-2 self-stretch sm:self-auto">
+              <div className="flex items-center gap-2">
                 <button
+                  type="button"
                   onClick={handleResetLinks}
-                  className="px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-semibold text-gray-300 hover:text-white flex items-center gap-1.5 transition"
+                  className="px-3 py-1.5 rounded-xl border border-white/10 text-xs font-medium text-gray-300 hover:text-white hover:bg-white/5 transition flex items-center gap-1.5"
                 >
                   <RotateCcw className="w-3.5 h-3.5" />
                   <span>Restaurar Padrão</span>
                 </button>
 
                 <button
+                  type="button"
                   onClick={() => addNewButton('no-photo')}
-                  className="px-3.5 py-2 rounded-xl bg-purple-600/30 hover:bg-purple-600/50 border border-purple-500/40 text-xs font-bold text-white flex items-center gap-1.5 transition shadow-lg"
+                  className="px-3.5 py-1.5 rounded-xl bg-white text-dark-900 text-xs font-semibold hover:bg-gray-200 transition shadow flex items-center gap-1.5"
                 >
-                  <Plus className="w-4 h-4 text-purple-300" />
-                  <span>Criar Novo Botão</span>
-                </button>
-
-                <button
-                  onClick={() => handleSaveLinks()}
-                  disabled={savingLinks}
-                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-brand-pink text-white font-bold text-xs hover:opacity-90 flex items-center gap-1.5 shadow-lg transition disabled:opacity-50"
-                >
-                  {savingLinks ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                  <span>Salvar Alterações</span>
+                  <Plus className="w-4 h-4" />
+                  <span>Novo Botão</span>
                 </button>
               </div>
             </div>
 
-            {/* Quick Create Buttons Shortcuts */}
-            <div className="p-4 rounded-xl bg-white/5 border border-white/10 space-y-2">
-              <p className="text-xs font-bold text-gray-300">Tipos de Botão para Adicionar:</p>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                <button
-                  onClick={() => addNewButton('no-photo')}
-                  className="p-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-left transition flex items-center gap-3 group"
-                >
-                  <div className="w-8 h-8 rounded-lg bg-gray-700/50 border border-white/10 flex items-center justify-center shrink-0">
-                    <Edit3 className="w-4 h-4 text-gray-300 group-hover:text-white" />
-                  </div>
-                  <div>
-                    <div className="text-xs font-bold text-white">Botão sem Foto</div>
-                    <div className="text-[10px] text-gray-400">Texto simples e direto</div>
-                  </div>
-                </button>
+            {/* Quick Add Presets */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+              <button
+                type="button"
+                onClick={() => addNewButton('no-photo')}
+                className="p-3 rounded-xl border border-white/10 bg-[#0e1017] hover:border-white/20 hover:bg-white/[0.03] transition text-left space-y-1"
+              >
+                <div className="text-xs font-semibold text-white">Botão Simples</div>
+                <div className="text-[10px] text-gray-400">Texto sem foto</div>
+              </button>
 
-                <button
-                  onClick={() => addNewButton('left-thumb')}
-                  className="p-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-left transition flex items-center gap-3 group"
-                >
-                  <div className="w-8 h-8 rounded-lg bg-pink-500/20 border border-pink-500/30 flex items-center justify-center shrink-0">
-                    <ImageIcon className="w-4 h-4 text-pink-300" />
-                  </div>
-                  <div>
-                    <div className="text-xs font-bold text-white">Miniatura na Esquerda</div>
-                    <div className="text-[10px] text-gray-400">Foto pequena à esquerda</div>
-                  </div>
-                </button>
+              <button
+                type="button"
+                onClick={() => addNewButton('left-thumb')}
+                className="p-3 rounded-xl border border-white/10 bg-[#0e1017] hover:border-white/20 hover:bg-white/[0.03] transition text-left space-y-1"
+              >
+                <div className="text-xs font-semibold text-white">Miniatura Esquerda</div>
+                <div className="text-[10px] text-gray-400">Foto pequena lateral</div>
+              </button>
 
-                <button
-                  onClick={() => addNewButton('card-photo')}
-                  className="p-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-left transition flex items-center gap-3 group"
-                >
-                  <div className="w-8 h-8 rounded-lg bg-cyan-500/20 border border-cyan-500/30 flex items-center justify-center shrink-0">
-                    <Sparkles className="w-4 h-4 text-cyan-300" />
-                  </div>
-                  <div>
-                    <div className="text-xs font-bold text-white">Botão com Foto (Card)</div>
-                    <div className="text-[10px] text-gray-400">Card grande com imagem</div>
-                  </div>
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={() => addNewButton('card-photo')}
+                className="p-3 rounded-xl border border-white/10 bg-[#0e1017] hover:border-white/20 hover:bg-white/[0.03] transition text-left space-y-1"
+              >
+                <div className="text-xs font-semibold text-white">Card com Foto</div>
+                <div className="text-[10px] text-gray-400">Card visual grande</div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => addNewButton('cta-primary')}
+                className="p-3 rounded-xl border border-white/10 bg-[#0e1017] hover:border-white/20 hover:bg-white/[0.03] transition text-left space-y-1"
+              >
+                <div className="text-xs font-semibold text-white">Chamada VIP</div>
+                <div className="text-[10px] text-gray-400">Botão de destaque</div>
+              </button>
             </div>
 
-            {/* List of Buttons for Editing */}
+            {/* List of Buttons with integrated reordering */}
             <div className="space-y-4 pt-2">
-              {linksList.map((item) => (
+              {linksList.map((item, idx) => (
                 <div
                   key={item.id}
-                  className={`p-4 rounded-2xl border transition flex flex-col gap-4 ${
+                  className={`p-4 rounded-2xl border transition space-y-4 ${
                     item.active
-                      ? 'bg-white/5 border-white/15 shadow-lg'
-                      : 'bg-black/40 border-white/5 opacity-60'
+                      ? 'bg-[#0e1017] border-white/10 shadow-sm'
+                      : 'bg-black/30 border-white/[0.05] opacity-60'
                   }`}
                 >
-                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3 border-b border-white/10">
+                  {/* Top Bar of item: position, title, reorder buttons, status */}
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3 border-b border-white/[0.06]">
+                    
                     <div className="flex items-center gap-3">
-                      <span className="w-6 h-6 rounded-full bg-white/10 text-[10px] font-bold flex items-center justify-center text-gray-300">
-                        {item.type === 'cta-primary' ? '⚡' : item.type === 'left-thumb' ? '📷' : item.type === 'card-photo' ? '🖼️' : '🔗'}
-                      </span>
+                      {/* Position & Move Up/Down Controls */}
+                      <div className="flex items-center gap-1">
+                        <span className="w-6 h-6 rounded-lg bg-white/5 border border-white/10 text-[11px] font-mono font-semibold text-gray-400 flex items-center justify-center">
+                          #{idx + 1}
+                        </span>
+
+                        <div className="flex flex-col gap-0.5">
+                          <button
+                            type="button"
+                            onClick={() => moveLinkItem(idx, 'up')}
+                            disabled={idx === 0}
+                            className="p-1 rounded text-gray-400 hover:text-white disabled:opacity-20 transition"
+                            title="Mover para cima"
+                          >
+                            <ArrowUp className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => moveLinkItem(idx, 'down')}
+                            disabled={idx === linksList.length - 1}
+                            className="p-1 rounded text-gray-400 hover:text-white disabled:opacity-20 transition"
+                            title="Mover para baixo"
+                          >
+                            <ArrowDown className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Title & tags */}
                       <div>
                         <div className="flex items-center gap-2">
-                          <h4 className="text-sm font-bold text-white">{item.title || 'Sem título'}</h4>
+                          <h4 className="text-sm font-semibold text-white">{item.title || 'Sem título'}</h4>
                           {item.badge && item.badge.trim() !== '' && (
                             <span
-                              className="px-2 py-0.5 rounded-full text-[9px] font-bold border uppercase tracking-wider"
+                              className="px-2 py-0.5 rounded-md text-[9px] font-semibold border uppercase tracking-wider"
                               style={{
                                 backgroundColor: item.badgeColor?.startsWith('#')
-                                  ? `${item.badgeColor}33`
+                                  ? `${item.badgeColor}22`
                                   : BADGE_COLOR_OPTIONS.find((b) => b.id === item.badgeColor)?.hex
-                                  ? `${BADGE_COLOR_OPTIONS.find((b) => b.id === item.badgeColor)?.hex}33`
-                                  : '#ff3b9433',
+                                  ? `${BADGE_COLOR_OPTIONS.find((b) => b.id === item.badgeColor)?.hex}22`
+                                  : '#ff3b9422',
                                 borderColor: item.badgeColor?.startsWith('#')
-                                  ? `${item.badgeColor}66`
+                                  ? `${item.badgeColor}55`
                                   : BADGE_COLOR_OPTIONS.find((b) => b.id === item.badgeColor)?.hex
-                                  ? `${BADGE_COLOR_OPTIONS.find((b) => b.id === item.badgeColor)?.hex}66`
-                                  : '#ff3b9466',
+                                  ? `${BADGE_COLOR_OPTIONS.find((b) => b.id === item.badgeColor)?.hex}55`
+                                  : '#ff3b9455',
                                 color: item.badgeColor?.startsWith('#')
                                   ? item.badgeColor
                                   : BADGE_COLOR_OPTIONS.find((b) => b.id === item.badgeColor)?.hex || '#ff3b94',
                               }}
                             >
                               {item.badge}
-                            </span>
-                          )}
-                          {item.hasBlur && item.type !== 'no-photo' && (
-                            <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30 flex items-center gap-1">
-                              <EyeOff className="w-2.5 h-2.5 text-purple-400" />
-                              <span>Blur Ativo</span>
                             </span>
                           )}
                         </div>
@@ -2534,38 +1635,44 @@ export default function AdminDashboard() {
                       </div>
                     </div>
 
+                    {/* Toggle Active & Delete */}
                     <div className="flex items-center gap-2 self-end sm:self-auto">
                       <button
+                        type="button"
                         onClick={() => toggleLinkActive(item.id)}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition border ${
+                        className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition border ${
                           item.active
-                            ? 'bg-green-500/20 text-green-300 border-green-500/40 hover:bg-green-500/30'
-                            : 'bg-gray-800 text-gray-400 border-gray-700 hover:bg-gray-700'
+                            ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
+                            : 'bg-white/5 text-gray-400 border-white/10'
                         }`}
                       >
-                        {item.active ? 'Ativo na Página' : 'Oculto'}
+                        {item.active ? 'Ativo' : 'Oculto'}
                       </button>
 
                       <button
+                        type="button"
                         onClick={() => removeLinkItem(item.id)}
-                        className="p-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 transition"
+                        className="p-1.5 rounded-lg border border-red-500/20 text-red-400 hover:bg-red-500/10 transition"
                         title="Excluir Botão"
                       >
-                        <Trash2 className="w-4 h-4" />
+                        <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     </div>
+
                   </div>
 
                   {/* Form fields for button */}
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    
+                    {/* Estilo */}
                     <div>
                       <label className="text-[10px] text-gray-400 uppercase font-semibold block mb-1">
-                        Estilo / Tipo do Botão
+                        Estilo do Botão
                       </label>
                       <select
                         value={item.type}
                         onChange={(e) => updateLinkItem(item.id, 'type', e.target.value)}
-                        className="w-full bg-dark-900 border border-white/15 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-purple-400"
+                        className="w-full bg-dark-900 border border-white/10 rounded-xl px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-brand-purple"
                       >
                         {BUTTON_TYPE_OPTIONS.map((opt) => (
                           <option key={opt.value} value={opt.value} className="bg-dark-900 text-white">
@@ -2575,326 +1682,266 @@ export default function AdminDashboard() {
                       </select>
                     </div>
 
+                    {/* Título */}
                     <div>
                       <label className="text-[10px] text-gray-400 uppercase font-semibold block mb-1">
-                        Título do Botão
+                        Título
                       </label>
                       <input
                         type="text"
                         value={item.title}
                         onChange={(e) => updateLinkItem(item.id, 'title', e.target.value)}
-                        placeholder="Ex: Agendar Chamada"
-                        className="w-full bg-dark-900 border border-white/15 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-purple-400"
+                        placeholder="Ex: Ver Mentoria"
+                        className="w-full bg-dark-900 border border-white/10 rounded-xl px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-brand-purple"
                       />
                     </div>
 
+                    {/* Subtítulo */}
                     <div>
                       <label className="text-[10px] text-gray-400 uppercase font-semibold block mb-1">
-                        Subtítulo / Descrição Curta
+                        Subtítulo (Opcional)
                       </label>
                       <input
                         type="text"
                         value={item.subtitle || ''}
                         onChange={(e) => updateLinkItem(item.id, 'subtitle', e.target.value)}
                         placeholder="Ex: Sessão 1-on-1 exclusiva"
-                        className="w-full bg-dark-900 border border-white/15 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-purple-400"
+                        className="w-full bg-dark-900 border border-white/10 rounded-xl px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-brand-purple"
                       />
                     </div>
 
-                    <div className={item.type !== 'no-photo' ? 'md:col-span-1' : 'md:col-span-2'}>
+                    {/* URL */}
+                    <div className="md:col-span-2">
                       <label className="text-[10px] text-gray-400 uppercase font-semibold block mb-1">
-                        URL do Link de Destino
+                        URL de Destino
                       </label>
                       <input
                         type="text"
                         value={item.url}
                         onChange={(e) => updateLinkItem(item.id, 'url', e.target.value)}
                         placeholder="https://..."
-                        className="w-full bg-dark-900 border border-white/15 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-purple-400 font-mono"
+                        className="w-full bg-dark-900 border border-white/10 rounded-xl px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-brand-purple font-mono"
                       />
                     </div>
 
-                    {item.type !== 'no-photo' && (
-                      <div className="md:col-span-2">
-                        <ImageUploadField
-                          label="Foto / Imagem do Botão"
-                          value={item.image || ''}
-                          onChange={(url) => updateLinkItem(item.id, 'image', url)}
-                          placeholder="https://... ou suba uma foto"
-                          allowCrop={true}
-                          cropAspectRatio={item.type === 'left-thumb' ? 'square' : 'card'}
-                          cropTitle={`Ajustar Imagem: ${item.title || 'Botão'}`}
-                          position={item.imagePosition}
-                          onPositionChange={(pos) => updateLinkItem(item.id, 'imagePosition', pos)}
-                          fit={item.imageFit}
-                          onFitChange={(fit) => updateLinkItem(item.id, 'imageFit', fit)}
-                          helpText={
-                            item.type === 'left-thumb'
-                              ? 'Miniatura na lateral esquerda (proporção 1:1 quadrada recomendada).'
-                              : 'Card visual com foto em destaque grande (proporção 16:9 recomendada).'
-                          }
-                        />
+                    {/* Tag / Selo (Badge) */}
+                    <div>
+                      <label className="text-[10px] text-gray-400 uppercase font-semibold block mb-1">
+                        Selo / Tag (Opcional)
+                      </label>
+                      <input
+                        type="text"
+                        value={item.badge || ''}
+                        onChange={(e) => updateLinkItem(item.id, 'badge', e.target.value)}
+                        placeholder="Ex: Destaque, VIP"
+                        className="w-full bg-dark-900 border border-white/10 rounded-xl px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-brand-purple"
+                      />
+                    </div>
+
+                    {/* Badge Color Picker */}
+                    {item.badge && item.badge.trim() !== '' && (
+                      <div className="md:col-span-3 flex items-center justify-between p-2.5 rounded-xl bg-white/[0.02] border border-white/[0.06]">
+                        <span className="text-[11px] text-gray-400 font-medium">Cor do Selo:</span>
+                        <div className="flex items-center gap-1.5">
+                          {BADGE_COLOR_OPTIONS.map((c) => {
+                            const isSelected = (!item.badgeColor && c.id === 'pink') || item.badgeColor === c.id || item.badgeColor === c.hex;
+                            return (
+                              <button
+                                key={c.id}
+                                type="button"
+                                onClick={() => updateLinkItem(item.id, 'badgeColor', c.id)}
+                                className={`w-4 h-4 rounded-full ${c.bgClass} transition flex items-center justify-center ${
+                                  isSelected ? 'ring-2 ring-white scale-110' : 'opacity-60 hover:opacity-100'
+                                }`}
+                                title={c.label}
+                              />
+                            );
+                          })}
+                        </div>
                       </div>
                     )}
 
-                    <div className="flex flex-col justify-between">
-                      <div>
-                        <label className="text-[10px] text-gray-400 uppercase font-semibold block mb-1">
-                          Tag / Selo no Canto (Opcional)
-                        </label>
-                        <input
-                          type="text"
-                          value={item.badge || ''}
-                          onChange={(e) => updateLinkItem(item.id, 'badge', e.target.value)}
-                          placeholder="Ex: Populares, Destaque, VIP"
-                          className="w-full bg-dark-900 border border-white/15 rounded-xl px-3 py-1.5 text-xs text-white placeholder:text-gray-600 focus:outline-none focus:border-purple-400"
-                        />
-                      </div>
+                    {/* Image handling via Gallery if button type supports image */}
+                    {item.type !== 'no-photo' && (
+                      <div className="md:col-span-3 p-3 rounded-xl bg-white/[0.02] border border-white/[0.06] flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                          <div className="w-12 h-12 rounded-lg bg-dark-900 overflow-hidden border border-white/10 flex items-center justify-center shrink-0">
+                            {item.image && item.image.trim() !== '' ? (
+                              /* eslint-disable-next-line @next/next/no-img-element */
+                              <img
+                                src={item.image}
+                                alt="Foto do botão"
+                                className="w-full h-full"
+                                style={{
+                                  objectFit: item.imageFit || 'contain',
+                                  objectPosition: item.imagePosition || '50% 50%',
+                                }}
+                                onError={(e) => {
+                                  (e.currentTarget as HTMLElement).style.display = 'none';
+                                }}
+                              />
+                            ) : (
+                              <ImageIcon className="w-5 h-5 text-gray-500" />
+                            )}
+                          </div>
 
-                      {/* Badge Color Selector */}
-                      {item.badge && item.badge.trim() !== '' && (
-                        <div className="mt-2 pt-2 border-t border-white/10">
-                          <div className="flex items-center justify-between mb-1.5">
-                            <span className="text-[10px] text-gray-400 uppercase font-semibold">Cor da Tag</span>
-                            <span className="text-[9px] text-gray-400 font-medium">
-                              {BADGE_COLOR_OPTIONS.find((c) => c.id === item.badgeColor)?.label || item.badgeColor || 'Rosa'}
+                          <div>
+                            <span className="text-xs font-semibold text-white block">Foto do Botão</span>
+                            <span className="text-[11px] text-gray-400">
+                              {item.image ? 'Foto selecionada da Galeria' : 'Nenhuma imagem selecionada'}
                             </span>
                           </div>
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            {BADGE_COLOR_OPTIONS.map((c) => {
-                              const isSelected = (!item.badgeColor && c.id === 'pink') || item.badgeColor === c.id || item.badgeColor === c.hex;
-                              return (
-                                <button
-                                  key={c.id}
-                                  type="button"
-                                  onClick={() => updateLinkItem(item.id, 'badgeColor', c.id)}
-                                  className={`w-5 h-5 rounded-full ${c.bgClass} transition-all flex items-center justify-center shrink-0 ${
-                                    isSelected
-                                      ? 'scale-110 ring-2 ring-white ring-offset-1 ring-offset-dark-900 border border-white'
-                                      : 'border border-white/30 hover:scale-105 opacity-70 hover:opacity-100'
-                                  }`}
-                                  title={c.label}
-                                >
-                                  {isSelected && (
-                                    <Check className={`w-2.5 h-2.5 ${c.id === 'white' ? 'text-black' : 'text-white'}`} />
-                                  )}
-                                </button>
-                              );
-                            })}
-
-                            {/* Custom Hex Color Picker */}
-                            <label
-                              className="relative w-5 h-5 rounded-full border border-white/40 cursor-pointer overflow-hidden flex items-center justify-center hover:scale-105 transition bg-gradient-to-tr from-pink-500 via-purple-500 to-cyan-500 shrink-0"
-                              title="Escolher Cor Personalizada"
-                            >
-                              <input
-                                type="color"
-                                value={item.badgeColor?.startsWith('#') ? item.badgeColor : '#ff3b94'}
-                                onChange={(e) => updateLinkItem(item.id, 'badgeColor', e.target.value)}
-                                className="opacity-0 absolute inset-0 w-full h-full cursor-pointer"
-                              />
-                            </label>
-                          </div>
                         </div>
-                      )}
-                    </div>
+
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => openGalleryForLink(item.id)}
+                            className="px-3 py-1.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 text-xs font-semibold text-white transition flex items-center gap-1.5"
+                          >
+                            <ImageIcon className="w-3.5 h-3.5 text-brand-cyan" />
+                            <span>{item.image ? 'Trocar Imagem' : 'Escolher da Galeria'}</span>
+                          </button>
+
+                          {item.image && (
+                            <button
+                              type="button"
+                              onClick={() => openCropForLink(item)}
+                              className="px-3 py-1.5 rounded-xl border border-white/10 text-xs font-medium text-gray-300 hover:text-white hover:bg-white/5 transition"
+                            >
+                              Ajustar
+                            </button>
+                          )}
+
+                          {item.image && (
+                            <button
+                              type="button"
+                              onClick={() => updateLinkItem(item.id, 'image', '')}
+                              className="p-1.5 rounded-lg border border-red-500/20 text-red-400 hover:bg-red-500/10 transition"
+                              title="Remover foto"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    )}
 
                     {/* Blur Toggle Option */}
                     {item.type !== 'no-photo' && (
-                      <div className="md:col-span-3 pt-1 space-y-2">
-                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 rounded-xl bg-dark-900 border border-white/10 gap-3">
-                          <div className="flex items-center gap-2.5">
-                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center border transition ${
-                              item.hasBlur 
-                                ? 'bg-purple-600/30 border-purple-500/40 text-purple-300' 
-                                : 'bg-white/5 border-white/10 text-gray-400'
-                            }`}>
-                              <EyeOff className="w-4 h-4" />
+                      <div className="md:col-span-3 p-3 rounded-xl bg-white/[0.02] border border-white/[0.06] space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="text-xs font-semibold text-white flex items-center gap-1.5">
+                              <EyeOff className="w-3.5 h-3.5 text-purple-400" />
+                              <span>Efeito Blur com Revelação</span>
                             </div>
-                            <div>
-                              <div className="text-xs font-bold text-white flex items-center gap-1.5">
-                                <span>Efeito Blur com Revelação (Sensível / Spoiler)</span>
-                                {item.hasBlur && (
-                                  <span className="text-[9px] bg-purple-500/30 text-purple-200 px-1.5 py-0.5 rounded font-semibold">ATIVADO</span>
-                                )}
-                              </div>
-                              <p className="text-[10px] text-gray-400">
-                                A imagem começa borrada com um ícone de olho no centro. Ao clicar, o olho e o blur desaparecem.
-                              </p>
-                            </div>
+                            <p className="text-[11px] text-gray-400 mt-0.5">
+                              A imagem inicia borrada e revela a foto ao clicar.
+                            </p>
                           </div>
 
                           <button
                             type="button"
                             onClick={() => updateLinkItem(item.id, 'hasBlur', !item.hasBlur)}
-                            className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition border shrink-0 ${
+                            className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition border ${
                               item.hasBlur
-                                ? 'bg-purple-600/30 text-purple-200 border-purple-500/50 hover:bg-purple-600/40 shadow-glow-purple'
-                                : 'bg-white/5 text-gray-400 border-white/10 hover:bg-white/10 hover:text-white'
+                                ? 'bg-purple-600/20 text-purple-300 border-purple-500/40'
+                                : 'bg-white/5 text-gray-400 border-white/10'
                             }`}
                           >
-                            {item.hasBlur ? (
-                              <>
-                                <EyeOff className="w-3.5 h-3.5 text-purple-300" />
-                                <span>Blur Ativado</span>
-                              </>
-                            ) : (
-                              <>
-                                <Eye className="w-3.5 h-3.5" />
-                                <span>Sem Blur (Normal)</span>
-                              </>
-                            )}
+                            {item.hasBlur ? 'Blur Ativado' : 'Sem Blur'}
                           </button>
                         </div>
 
                         {item.hasBlur && (
-                          <div className="p-3 rounded-xl bg-purple-950/20 border border-purple-500/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                            <div className="w-full sm:w-auto">
-                              <label className="text-xs font-semibold text-purple-200 block mb-0.5">
-                                Texto de Revelação do Blur
-                              </label>
-                              <p className="text-[10px] text-gray-400">
-                                Mensagem exibida abaixo do ícone (Padrão: &quot;Clique para ver a foto&quot;)
-                              </p>
-                            </div>
+                          <div className="pt-2 border-t border-white/[0.06] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                            <label className="text-[11px] text-gray-300 font-medium">Texto de Revelação:</label>
                             <input
                               type="text"
                               value={item.blurText !== undefined ? item.blurText : ''}
                               onChange={(e) => updateLinkItem(item.id, 'blurText', e.target.value)}
                               placeholder="Clique para ver a foto"
-                              className="w-full sm:w-64 bg-dark-900 border border-purple-500/30 rounded-xl px-3 py-1.5 text-xs text-white placeholder:text-gray-600 focus:outline-none focus:border-purple-400"
+                              className="w-full sm:w-64 bg-dark-900 border border-white/10 rounded-xl px-2.5 py-1 text-xs text-white focus:outline-none focus:border-purple-400"
                             />
                           </div>
                         )}
                       </div>
                     )}
+
                   </div>
+
                 </div>
               ))}
             </div>
 
-            <div className="pt-4 border-t border-white/10 flex justify-end">
-              <button
-                onClick={() => handleSaveLinks()}
-                disabled={savingLinks}
-                className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-brand-pink text-white font-bold text-xs hover:opacity-90 flex items-center gap-2 shadow-lg transition disabled:opacity-50"
-              >
-                {savingLinks ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                <span>Salvar Todos os Botões</span>
-              </button>
-            </div>
           </div>
         )}
 
-        {/* TAB 5: REORDER BUTTONS & CARDS */}
-        {activeTab === 'reorder' && (
-          <div className="glass-card rounded-2xl p-6 border border-white/10 space-y-6">
-            <div className="flex items-center justify-between pb-4 border-b border-white/10">
-              <div>
-                <h3 className="text-base font-bold text-white flex items-center gap-2">
-                  <ArrowUpDown className="w-5 h-5 text-amber-400" />
-                  <span>Reordenar Ordem dos Botões</span>
-                </h3>
-                <p className="text-xs text-gray-400 mt-1">
-                  Mova os botões para cima ou para baixo para alterar exatamente a sequência em que aparecem no seu perfil.
-                </p>
-              </div>
+      </main>
 
-              <button
-                onClick={() => handleSaveLinks()}
-                disabled={savingLinks}
-                className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-brand-pink text-white font-bold text-xs hover:opacity-90 flex items-center gap-2 shadow-lg transition disabled:opacity-50"
-              >
-                {savingLinks ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                <span>Salvar Nova Ordem</span>
-              </button>
-            </div>
+      {/* Global Floating Save Button */}
+      <GlobalSaveButton
+        hasUnsavedChanges={hasUnsavedChanges}
+        onSave={handleGlobalSave}
+        isSaving={isSaving}
+        saveSuccess={saveSuccess}
+      />
 
-            <div className="space-y-3">
-              {linksList.map((item, idx) => (
-                <div
-                  key={item.id}
-                  className={`p-4 rounded-2xl border transition flex items-center justify-between gap-4 ${
-                    item.active
-                      ? 'bg-white/5 border-white/15 shadow-md'
-                      : 'bg-black/40 border-white/5 opacity-50'
-                  }`}
-                >
-                  <div className="flex items-center gap-4 min-w-0">
-                    <span className="w-8 h-8 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 font-bold text-xs flex items-center justify-center shrink-0">
-                      #{idx + 1}
-                    </span>
+      {/* Gallery Picker Modal for Profile & Buttons */}
+      <GalleryPickerModal
+        isOpen={galleryPickerOpen}
+        onClose={() => {
+          setGalleryPickerOpen(false);
+          setPickerTarget(null);
+        }}
+        onSelectImage={handleGallerySelectedImage}
+        currentUrl={
+          pickerTarget?.type === 'avatar'
+            ? profile.avatarUrl
+            : pickerTarget?.type === 'cover'
+            ? profile.coverImageUrl
+            : pickerTarget?.linkId
+            ? linksList.find((l) => l.id === pickerTarget.linkId)?.image
+            : undefined
+        }
+        targetTitle={
+          pickerTarget?.type === 'avatar'
+            ? 'Foto de Perfil'
+            : pickerTarget?.type === 'cover'
+            ? 'Foto de Capa'
+            : 'Foto do Botão'
+        }
+        aspectRatio={
+          pickerTarget?.type === 'avatar'
+            ? 'square'
+            : pickerTarget?.type === 'cover'
+            ? 'banner'
+            : pickerTarget?.linkId && linksList.find((l) => l.id === pickerTarget.linkId)?.type === 'left-thumb'
+            ? 'square'
+            : 'card'
+        }
+        showAvatarGuide={pickerTarget?.type === 'cover'}
+      />
 
-                    {item.image && item.image.trim() !== '' && (item.type === 'left-thumb' || item.type === 'card-photo' || item.type === 'hero-card') ? (
-                      <div className="w-12 h-12 rounded-xl overflow-hidden relative shrink-0 border border-white/10 bg-dark-800">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={item.image}
-                          alt={item.title}
-                          className="absolute inset-0 w-full h-full"
-                          style={{
-                            objectPosition: item.imagePosition || '50% 50%',
-                            objectFit: item.imageFit || 'cover',
-                          }}
-                          onError={(e) => {
-                            (e.currentTarget as HTMLElement).style.display = 'none';
-                          }}
-                        />
-                      </div>
-                    ) : (
-                      <div className="w-12 h-12 rounded-xl bg-dark-800 border border-white/10 flex items-center justify-center shrink-0 text-gray-400">
-                        <Layers className="w-5 h-5" />
-                      </div>
-                    )}
+      {/* Unified Image Crop Modal */}
+      {cropModalConfig.isOpen && (
+        <ImageCropModal
+          isOpen={cropModalConfig.isOpen}
+          onClose={() => setCropModalConfig((prev) => ({ ...prev, isOpen: false }))}
+          imageUrl={cropModalConfig.imageUrl}
+          initialPosition={cropModalConfig.position}
+          initialFit={cropModalConfig.fit}
+          aspectRatio={cropModalConfig.aspectRatio}
+          showAvatarGuide={cropModalConfig.showAvatarGuide}
+          title={cropModalConfig.title}
+          onSaveCrop={(url, pos, fit) => {
+            cropModalConfig.onSave(url, pos, fit);
+            setCropModalConfig((prev) => ({ ...prev, isOpen: false }));
+          }}
+        />
+      )}
 
-                    <div className="truncate">
-                      <div className="flex items-center gap-2">
-                        <h4 className="font-bold text-sm text-white truncate">{item.title}</h4>
-                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/10 text-gray-300 font-medium shrink-0">
-                          {item.type === 'cta-primary' ? 'VIP' : item.type === 'left-thumb' ? 'Miniatura' : item.type === 'card-photo' ? 'Card Foto' : 'Sem Foto'}
-                        </span>
-                      </div>
-                      <p className="text-xs text-gray-400 truncate mt-0.5">{item.subtitle || item.url}</p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2 shrink-0">
-                    <button
-                      onClick={() => moveLinkItem(idx, 'up')}
-                      disabled={idx === 0}
-                      className="p-2 rounded-xl bg-white/5 hover:bg-white/15 border border-white/10 text-gray-300 disabled:opacity-20 transition"
-                      title="Mover para cima"
-                    >
-                      <ArrowUp className="w-4 h-4" />
-                    </button>
-
-                    <button
-                      onClick={() => moveLinkItem(idx, 'down')}
-                      disabled={idx === linksList.length - 1}
-                      className="p-2 rounded-xl bg-white/5 hover:bg-white/15 border border-white/10 text-gray-300 disabled:opacity-20 transition"
-                      title="Mover para baixo"
-                    >
-                      <ArrowDown className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="pt-4 border-t border-white/10 flex justify-end">
-              <button
-                onClick={() => handleSaveLinks()}
-                disabled={savingLinks}
-                className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-brand-pink text-white font-bold text-xs hover:opacity-90 flex items-center gap-2 shadow-lg transition disabled:opacity-50"
-              >
-                {savingLinks ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                <span>Salvar Nova Ordem</span>
-              </button>
-            </div>
-          </div>
-        )}
-
-      </div>
     </div>
   );
 }
