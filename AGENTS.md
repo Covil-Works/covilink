@@ -100,7 +100,11 @@ A página DEVE se encaixar perfeitamente na largura da tela de qualquer celular 
      - `card-photo`: Card visual grande (`h-48`).
      - `cta-primary`: Botão de destaque principal.
    - Ao alterar o tipo para `no-photo`, a imagem não deve ser renderizada na página pública.
-3. **Armazenamento Seguro em `data/`**:
+   - Suporte a tag/selo opcional no canto (`badge`, ex: *"Populares"*, *"Destaque"*) com seletor de cores (`badgeColor`, presets ou cor hexadecimal customizada), editável no painel `/admin`.
+3. **Padrão Visual do Efeito de Blur nos Botões/Cards**:
+   - O overlay de revelação em botões com imagem borrada (`hasBlur`) DEVE exibir o ícone (`EyeOff`) diretamente em **branco** com sombra suave (`drop-shadow`), **sem círculo ou moldura de fundo** atrás dele.
+   - O texto explicativo (campo `blurText` editável no painel `/admin`, com fallback para *"Clique para ver a foto"*) **NÃO deve ter fundo de pílula** (`rounded-full`, borda ou background sólido), devendo ser renderizado diretamente como texto limpo e legível sobre o backdrop.
+4. **Armazenamento Seguro em `data/`**:
    - Usar gravação atômica (`.tmp` seguido de `rename`) para prevenir corrupção de arquivos JSON durante escritas concorrentes.
 
 ---
@@ -112,5 +116,6 @@ A página DEVE se encaixar perfeitamente na largura da tela de qualquer celular 
 - [ ] A página inicial carrega instantaneamente sem tela branca ou flash claro?
 - [ ] A foto de perfil (`avatarUrl`) permanece no círculo de 96px/112px e NÃO se espalha pela tela?
 - [ ] Quando `coverImageUrl` está vazia, o topo exibe um gradiente dark em vez da foto do perfil?
+- [ ] Os botões com blur possuem ícone branco sem círculo atrás e texto sem fundo de pílula?
 - [ ] O painel administrativo (`/admin`) permite salvar e alternar visibilidade sem erros?
 - [ ] O comando `npm run build` compila com sucesso (`0 errors, 0 warnings`)?

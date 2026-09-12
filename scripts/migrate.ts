@@ -27,6 +27,8 @@ async function migrate() {
     console.log('Executando migração do schema (criando tabelas sem mock data)...');
     await client.query(sql);
     await client.query('ALTER TABLE portal_links ADD COLUMN IF NOT EXISTS has_blur BOOLEAN DEFAULT false;');
+    await client.query('ALTER TABLE portal_links ADD COLUMN IF NOT EXISTS blur_text VARCHAR(255) DEFAULT \'\';');
+    await client.query('ALTER TABLE portal_links ADD COLUMN IF NOT EXISTS badge_color VARCHAR(32) DEFAULT \'\';');
 
     console.log('Schema aplicado com sucesso!');
 

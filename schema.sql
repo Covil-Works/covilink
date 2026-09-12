@@ -26,11 +26,13 @@ CREATE TABLE IF NOT EXISTS portal_links (
   url TEXT NOT NULL DEFAULT '',
   image TEXT DEFAULT '',
   badge VARCHAR(64) DEFAULT '',
+  badge_color VARCHAR(32) DEFAULT '',
   icon_name VARCHAR(64) DEFAULT 'ExternalLink',
   category VARCHAR(64) DEFAULT 'custom',
   grid_span VARCHAR(32) DEFAULT 'full',
   active BOOLEAN DEFAULT true,
   has_blur BOOLEAN DEFAULT false,
+  blur_text VARCHAR(255) DEFAULT '',
   display_order INT DEFAULT 0,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP

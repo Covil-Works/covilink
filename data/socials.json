@@ -1,65 +1,25 @@
 [
   {
-    "id": "soc-1",
-    "platform": "instagram",
-    "title": "Instagram",
-    "url": "https://instagram.com/kourtneyreppert",
+    "id": "soc-1789175315295",
+    "platform": "telegram",
+    "title": "Telegram",
+    "url": "https://t.me/jujuaranibot",
     "icon": "",
     "active": true
   },
   {
-    "id": "soc-2",
+    "id": "soc-1789175319937",
     "platform": "twitter",
     "title": "X (Twitter)",
-    "url": "https://x.com/kourtneyreppert",
+    "url": "https://x.com/juju_arani",
     "icon": "",
     "active": true
   },
   {
-    "id": "soc-3",
-    "platform": "youtube",
-    "title": "YouTube",
-    "url": "https://youtube.com/@kourtneyreppert",
-    "icon": "",
-    "active": true
-  },
-  {
-    "id": "soc-4",
+    "id": "soc-1789175325451",
     "platform": "tiktok",
     "title": "TikTok",
-    "url": "https://tiktok.com/@kourtneyreppert",
-    "icon": "",
-    "active": true
-  },
-  {
-    "id": "soc-5",
-    "platform": "whatsapp",
-    "title": "WhatsApp",
-    "url": "https://wa.me/5511999999999",
-    "icon": "",
-    "active": true
-  },
-  {
-    "id": "soc-6",
-    "platform": "linkedin",
-    "title": "LinkedIn",
-    "url": "https://linkedin.com/in/kourtneyreppert",
-    "icon": "",
-    "active": true
-  },
-  {
-    "id": "soc-7",
-    "platform": "spotify",
-    "title": "Spotify",
-    "url": "https://open.spotify.com",
-    "icon": "",
-    "active": true
-  },
-  {
-    "id": "soc-8",
-    "platform": "github",
-    "title": "GitHub",
-    "url": "https://github.com",
+    "url": "https://tiktok.com/@ju_arani",
     "icon": "",
     "active": true
   }

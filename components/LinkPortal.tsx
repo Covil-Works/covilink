@@ -20,6 +20,72 @@ interface LinkPortalProps {
   links?: LinkItem[];
 }
 
+function getBadgeColorClasses(color?: string, isCardPhoto = false): string {
+  if (!color || color === 'pink' || color === '#ff3b94') {
+    return isCardPhoto
+      ? 'bg-brand-pink/85 text-white border-pink-300/40 shadow-glow-pink'
+      : 'bg-brand-pink/20 text-brand-pink border-brand-pink/30';
+  }
+  if (color === 'purple' || color === '#9333ea') {
+    return isCardPhoto
+      ? 'bg-purple-600/85 text-white border-purple-400/40 shadow-glow-purple'
+      : 'bg-purple-500/20 text-purple-300 border-purple-500/30';
+  }
+  if (color === 'cyan' || color === 'blue' || color === '#06b6d4') {
+    return isCardPhoto
+      ? 'bg-cyan-500/85 text-white border-cyan-300/40 shadow-glow-cyan'
+      : 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30';
+  }
+  if (color === 'emerald' || color === 'green' || color === '#10b981') {
+    return isCardPhoto
+      ? 'bg-emerald-500/85 text-white border-emerald-300/40'
+      : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30';
+  }
+  if (color === 'amber' || color === 'yellow' || color === 'gold' || color === '#f59e0b') {
+    return isCardPhoto
+      ? 'bg-amber-500/85 text-white border-amber-300/40'
+      : 'bg-amber-500/20 text-amber-300 border-amber-500/30';
+  }
+  if (color === 'rose' || color === 'red' || color === '#e11d48') {
+    return isCardPhoto
+      ? 'bg-rose-600/85 text-white border-rose-300/40'
+      : 'bg-rose-500/20 text-rose-300 border-rose-500/30';
+  }
+  if (color === 'white' || color === '#ffffff') {
+    return isCardPhoto
+      ? 'bg-white/95 text-dark-900 border-white/60'
+      : 'bg-white/20 text-white border-white/40';
+  }
+  if (color === 'dark' || color === 'black' || color === '#18181b') {
+    return isCardPhoto
+      ? 'bg-black/80 text-white border-white/25'
+      : 'bg-black/40 text-gray-300 border-white/20';
+  }
+  return isCardPhoto
+    ? 'text-white border-white/30'
+    : 'border-white/30';
+}
+
+function getBadgeInlineStyle(color?: string, isCardPhoto = false): React.CSSProperties | undefined {
+  if (color && color.startsWith('#')) {
+    const isLight = color.toLowerCase() === '#ffffff' || color.toLowerCase() === '#fff';
+    if (isCardPhoto) {
+      return {
+        backgroundColor: color,
+        color: isLight ? '#08090d' : '#ffffff',
+        borderColor: isLight ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.4)',
+      };
+    } else {
+      return {
+        backgroundColor: `${color}33`,
+        color: isLight ? '#ffffff' : color,
+        borderColor: `${color}55`,
+      };
+    }
+  }
+  return undefined;
+}
+
 export default function LinkPortal({ profile, socials, links }: LinkPortalProps) {
   const [copiedEmail, setCopiedEmail] = useState(false);
   const [clickNotice, setClickNotice] = useState<string | null>(null);
@@ -47,7 +113,10 @@ export default function LinkPortal({ profile, socials, links }: LinkPortalProps)
     setAvatarSrc(safeProfile.avatarUrl || INITIAL_PROFILE.avatarUrl);
     setCoverSrc(safeProfile.coverImageUrl || '');
     setCoverFailed(false);
-  }, [safeProfile.avatarUrl, safeProfile.coverImageUrl]);
+    if (safeProfile.name && typeof document !== 'undefined') {
+      document.title = safeProfile.name;
+    }
+  }, [safeProfile.avatarUrl, safeProfile.coverImageUrl, safeProfile.name]);
 
   const hasCustomCover = Boolean(
     coverSrc &&
@@ -119,10 +188,10 @@ export default function LinkPortal({ profile, socials, links }: LinkPortalProps)
       )}
 
       {/* Main Container - Mobile First Centered Column */}
-      <main className="w-full max-w-md px-4 pt-6 z-10 flex flex-col items-center overflow-x-hidden">
+      <main className="w-full max-w-md px-4 pt-4 z-10 flex flex-col items-center">
         
         {/* Cover Header Banner */}
-        <div className="w-full h-40 sm:h-44 rounded-2xl overflow-hidden relative border border-white/10 shadow-2xl mb-[-48px] bg-dark-800 shrink-0">
+        <div className="w-full h-[161px] rounded-2xl overflow-hidden relative border border-white/10 shadow-2xl mb-[-48px] bg-dark-800 shrink-0">
           {hasCustomCover ? (
             /* eslint-disable-next-line @next/next/no-img-element */
             <img
@@ -280,8 +349,11 @@ export default function LinkPortal({ profile, socials, links }: LinkPortalProps)
                       <div className="text-left truncate">
                         <div className="flex items-center gap-2">
                           <h3 className="text-sm font-bold text-white truncate group-hover:text-pink-300 transition">{item.title}</h3>
-                          {item.badge && (
-                            <span className="bg-brand-pink/20 text-brand-pink text-[9px] font-bold px-2 py-0.5 rounded-full border border-brand-pink/30 shrink-0">
+                          {item.badge && item.badge.trim() !== '' && (
+                            <span
+                              className={`text-[9px] font-bold px-2 py-0.5 rounded-full border shrink-0 ${getBadgeColorClasses(item.badgeColor, false)}`}
+                              style={getBadgeInlineStyle(item.badgeColor, false)}
+                            >
                               {item.badge}
                             </span>
                           )}
@@ -348,28 +420,29 @@ export default function LinkPortal({ profile, socials, links }: LinkPortalProps)
                           e.stopPropagation();
                           setRevealedCards((prev) => ({ ...prev, [item.id]: true }));
                         }}
-                        className="absolute inset-0 z-20 flex flex-col items-center justify-center backdrop-blur-md bg-black/40 cursor-pointer transition-all duration-300 hover:bg-black/50 group/blur"
-                        title="Clique para ver a foto"
+                        className="absolute inset-0 z-20 flex flex-col items-center justify-center backdrop-blur-md bg-black/40 cursor-pointer transition-all duration-300 hover:bg-black/50 group/blur px-4 text-center"
+                        title={item.blurText && item.blurText.trim() !== '' ? item.blurText : 'Clique para ver a foto'}
                       >
-                        <div className="w-14 h-14 rounded-full bg-black/70 border border-white/30 backdrop-blur-xl flex items-center justify-center shadow-glow-purple group-hover/blur:scale-110 group-hover/blur:border-brand-pink/50 transition-all duration-300">
-                          <EyeOff className="w-7 h-7 text-white drop-shadow-md group-hover/blur:text-brand-pink transition-colors" />
-                        </div>
-                        <span className="text-[11px] font-semibold text-white/90 mt-2.5 px-3.5 py-1 rounded-full bg-black/60 border border-white/20 backdrop-blur-md shadow-md group-hover/blur:border-brand-pink/40 transition-colors">
-                          Clique para ver a foto
+                        <EyeOff className="w-8 h-8 text-white drop-shadow-lg group-hover/blur:scale-110 transition-transform duration-300 shrink-0" />
+                        <span className="text-xs font-semibold text-white/95 mt-2 drop-shadow-md tracking-wide max-w-full truncate">
+                          {item.blurText && item.blurText.trim() !== '' ? item.blurText : 'Clique para ver a foto'}
                         </span>
                       </div>
                     )}
 
                     <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/40 to-transparent pointer-events-none z-10" />
                     
-                    <div className="absolute top-3 right-3 z-10">
+                    <div className="absolute top-3 right-3 z-30">
                       <div className="w-8 h-8 rounded-full bg-black/50 border border-white/20 backdrop-blur-md flex items-center justify-center group-hover:scale-110 transition">
                         <ExternalLink className="w-4 h-4 text-white" />
                       </div>
                     </div>
 
-                    {item.badge && (
-                      <div className="absolute top-3 left-3 z-10 bg-brand-pink/80 text-white font-semibold text-[10px] uppercase tracking-wider px-2.5 py-1 rounded-full border border-pink-300/30 backdrop-blur-md">
+                    {item.badge && item.badge.trim() !== '' && (
+                      <div
+                        className={`absolute top-3 left-3 z-30 font-semibold text-[10px] uppercase tracking-wider px-2.5 py-1 rounded-full border backdrop-blur-md shadow-md ${getBadgeColorClasses(item.badgeColor, true)}`}
+                        style={getBadgeInlineStyle(item.badgeColor, true)}
+                      >
                         {item.badge}
                       </div>
                     )}
@@ -405,8 +478,11 @@ export default function LinkPortal({ profile, socials, links }: LinkPortalProps)
                   <div className="text-left truncate pr-2">
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-bold tracking-wide text-white group-hover:text-pink-300 transition truncate">{item.title}</span>
-                      {item.badge && (
-                        <span className="bg-brand-pink/20 text-brand-pink text-[9px] font-bold px-2 py-0.5 rounded-full border border-brand-pink/30 shrink-0">
+                      {item.badge && item.badge.trim() !== '' && (
+                        <span
+                          className={`text-[9px] font-bold px-2 py-0.5 rounded-full border shrink-0 ${getBadgeColorClasses(item.badgeColor, false)}`}
+                          style={getBadgeInlineStyle(item.badgeColor, false)}
+                        >
                           {item.badge}
                         </span>
                       )}

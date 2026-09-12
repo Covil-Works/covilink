@@ -11,6 +11,8 @@ export interface LinkItem {
   gridSpan?: 'full' | 'half';
   active: boolean;
   hasBlur?: boolean;
+  blurText?: string;
+  badgeColor?: string;
 }
 
 export interface SocialLink {

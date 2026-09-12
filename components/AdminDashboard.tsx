@@ -70,6 +70,17 @@ const BUTTON_TYPE_OPTIONS: { label: string; value: LinkItem['type']; description
   { label: 'Botão Chamada VIP (Mentoria)', value: 'cta-primary', description: 'Botão de destaque principal com fundo claro/brilhante' },
 ];
 
+const BADGE_COLOR_OPTIONS = [
+  { id: 'pink', label: 'Rosa (Padrão)', hex: '#ff3b94', bgClass: 'bg-[#ff3b94]' },
+  { id: 'purple', label: 'Roxo Neon', hex: '#9333ea', bgClass: 'bg-[#9333ea]' },
+  { id: 'cyan', label: 'Azul / Ciano', hex: '#06b6d4', bgClass: 'bg-[#06b6d4]' },
+  { id: 'emerald', label: 'Verde', hex: '#10b981', bgClass: 'bg-[#10b981]' },
+  { id: 'amber', label: 'Dourado / Âmbar', hex: '#f59e0b', bgClass: 'bg-[#f59e0b]' },
+  { id: 'rose', label: 'Vermelho', hex: '#e11d48', bgClass: 'bg-[#e11d48]' },
+  { id: 'white', label: 'Branco', hex: '#ffffff', bgClass: 'bg-[#ffffff]' },
+  { id: 'dark', label: 'Preto / Grafite', hex: '#18181b', bgClass: 'bg-[#18181b]' },
+];
+
 export default function AdminDashboard() {
   const [metrics, setMetrics] = useState<AnalyticsSummary | null>(null);
   const [loading, setLoading] = useState(true);
@@ -378,6 +389,9 @@ export default function AdminDashboard() {
       image: type !== 'no-photo' ? 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=600&q=80' : '',
       active: true,
       hasBlur: false,
+      blurText: '',
+      badge: '',
+      badgeColor: 'pink',
       category: 'custom',
     };
     const updated = [...linksList, newItem];
@@ -1468,6 +1482,28 @@ export default function AdminDashboard() {
                       <div>
                         <div className="flex items-center gap-2">
                           <h4 className="text-sm font-bold text-white">{item.title || 'Sem título'}</h4>
+                          {item.badge && item.badge.trim() !== '' && (
+                            <span
+                              className="px-2 py-0.5 rounded-full text-[9px] font-bold border uppercase tracking-wider"
+                              style={{
+                                backgroundColor: item.badgeColor?.startsWith('#')
+                                  ? `${item.badgeColor}33`
+                                  : BADGE_COLOR_OPTIONS.find((b) => b.id === item.badgeColor)?.hex
+                                  ? `${BADGE_COLOR_OPTIONS.find((b) => b.id === item.badgeColor)?.hex}33`
+                                  : '#ff3b9433',
+                                borderColor: item.badgeColor?.startsWith('#')
+                                  ? `${item.badgeColor}66`
+                                  : BADGE_COLOR_OPTIONS.find((b) => b.id === item.badgeColor)?.hex
+                                  ? `${BADGE_COLOR_OPTIONS.find((b) => b.id === item.badgeColor)?.hex}66`
+                                  : '#ff3b9466',
+                                color: item.badgeColor?.startsWith('#')
+                                  ? item.badgeColor
+                                  : BADGE_COLOR_OPTIONS.find((b) => b.id === item.badgeColor)?.hex || '#ff3b94',
+                              }}
+                            >
+                              {item.badge}
+                            </span>
+                          )}
                           {item.hasBlur && item.type !== 'no-photo' && (
                             <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30 flex items-center gap-1">
                               <EyeOff className="w-2.5 h-2.5 text-purple-400" />
@@ -1548,7 +1584,7 @@ export default function AdminDashboard() {
                       />
                     </div>
 
-                    <div className="md:col-span-2">
+                    <div className={item.type !== 'no-photo' ? 'md:col-span-1' : 'md:col-span-2'}>
                       <label className="text-[10px] text-gray-400 uppercase font-semibold block mb-1">
                         URL do Link de Destino
                       </label>
@@ -1576,9 +1612,71 @@ export default function AdminDashboard() {
                       </div>
                     )}
 
+                    <div className="flex flex-col justify-between">
+                      <div>
+                        <label className="text-[10px] text-gray-400 uppercase font-semibold block mb-1">
+                          Tag / Selo no Canto (Opcional)
+                        </label>
+                        <input
+                          type="text"
+                          value={item.badge || ''}
+                          onChange={(e) => updateLinkItem(item.id, 'badge', e.target.value)}
+                          placeholder="Ex: Populares, Destaque, VIP"
+                          className="w-full bg-dark-900 border border-white/15 rounded-xl px-3 py-1.5 text-xs text-white placeholder:text-gray-600 focus:outline-none focus:border-purple-400"
+                        />
+                      </div>
+
+                      {/* Badge Color Selector */}
+                      {item.badge && item.badge.trim() !== '' && (
+                        <div className="mt-2 pt-2 border-t border-white/10">
+                          <div className="flex items-center justify-between mb-1.5">
+                            <span className="text-[10px] text-gray-400 uppercase font-semibold">Cor da Tag</span>
+                            <span className="text-[9px] text-gray-400 font-medium">
+                              {BADGE_COLOR_OPTIONS.find((c) => c.id === item.badgeColor)?.label || item.badgeColor || 'Rosa'}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            {BADGE_COLOR_OPTIONS.map((c) => {
+                              const isSelected = (!item.badgeColor && c.id === 'pink') || item.badgeColor === c.id || item.badgeColor === c.hex;
+                              return (
+                                <button
+                                  key={c.id}
+                                  type="button"
+                                  onClick={() => updateLinkItem(item.id, 'badgeColor', c.id)}
+                                  className={`w-5 h-5 rounded-full ${c.bgClass} transition-all flex items-center justify-center shrink-0 ${
+                                    isSelected
+                                      ? 'scale-110 ring-2 ring-white ring-offset-1 ring-offset-dark-900 border border-white'
+                                      : 'border border-white/30 hover:scale-105 opacity-70 hover:opacity-100'
+                                  }`}
+                                  title={c.label}
+                                >
+                                  {isSelected && (
+                                    <Check className={`w-2.5 h-2.5 ${c.id === 'white' ? 'text-black' : 'text-white'}`} />
+                                  )}
+                                </button>
+                              );
+                            })}
+
+                            {/* Custom Hex Color Picker */}
+                            <label
+                              className="relative w-5 h-5 rounded-full border border-white/40 cursor-pointer overflow-hidden flex items-center justify-center hover:scale-105 transition bg-gradient-to-tr from-pink-500 via-purple-500 to-cyan-500 shrink-0"
+                              title="Escolher Cor Personalizada"
+                            >
+                              <input
+                                type="color"
+                                value={item.badgeColor?.startsWith('#') ? item.badgeColor : '#ff3b94'}
+                                onChange={(e) => updateLinkItem(item.id, 'badgeColor', e.target.value)}
+                                className="opacity-0 absolute inset-0 w-full h-full cursor-pointer"
+                              />
+                            </label>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
                     {/* Blur Toggle Option */}
                     {item.type !== 'no-photo' && (
-                      <div className="md:col-span-3 pt-1">
+                      <div className="md:col-span-3 pt-1 space-y-2">
                         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 rounded-xl bg-dark-900 border border-white/10 gap-3">
                           <div className="flex items-center gap-2.5">
                             <div className={`w-8 h-8 rounded-lg flex items-center justify-center border transition ${
@@ -1623,6 +1721,26 @@ export default function AdminDashboard() {
                             )}
                           </button>
                         </div>
+
+                        {item.hasBlur && (
+                          <div className="p-3 rounded-xl bg-purple-950/20 border border-purple-500/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                            <div className="w-full sm:w-auto">
+                              <label className="text-xs font-semibold text-purple-200 block mb-0.5">
+                                Texto de Revelação do Blur
+                              </label>
+                              <p className="text-[10px] text-gray-400">
+                                Mensagem exibida abaixo do ícone (Padrão: &quot;Clique para ver a foto&quot;)
+                              </p>
+                            </div>
+                            <input
+                              type="text"
+                              value={item.blurText !== undefined ? item.blurText : ''}
+                              onChange={(e) => updateLinkItem(item.id, 'blurText', e.target.value)}
+                              placeholder="Clique para ver a foto"
+                              className="w-full sm:w-64 bg-dark-900 border border-purple-500/30 rounded-xl px-3 py-1.5 text-xs text-white placeholder:text-gray-600 focus:outline-none focus:border-purple-400"
+                            />
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>

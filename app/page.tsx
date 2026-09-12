@@ -1,16 +1,34 @@
+import type { Metadata } from 'next';
 import LinkPortal from '@/components/LinkPortal';
 import { getSocials } from '@/lib/socials-store';
 import { getProfile } from '@/lib/profile-store';
 import { getLinks } from '@/lib/links-store';
-import { SocialLink, ProfileConfig, LinkItem } from '@/lib/links-config';
+import { SocialLink, ProfileConfig, LinkItem, INITIAL_PROFILE } from '@/lib/links-config';
 
 // Ensure fresh read of configuration files on every request
 export const revalidate = 0;
 
-export const metadata = {
-  title: 'Kourtney Reppert | Covilink',
-  description: 'Galactic Glam Goddess - Links oficiais, mentoria, cursos e mídias.',
-};
+export async function generateMetadata(): Promise<Metadata> {
+  try {
+    const profile = await getProfile();
+    const title = profile?.name?.trim() || INITIAL_PROFILE.name;
+    const description = profile?.bio?.trim() || `Portal de links oficial de ${title}`;
+
+    return {
+      title,
+      description,
+      openGraph: {
+        title,
+        description,
+      },
+    };
+  } catch (err) {
+    return {
+      title: INITIAL_PROFILE.name,
+      description: INITIAL_PROFILE.bio,
+    };
+  }
+}
 
 export default async function HomePage() {
   let profile: ProfileConfig;

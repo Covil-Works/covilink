@@ -24,11 +24,13 @@ export function sanitizeLinks(items: any[]): LinkItem[] {
       url: String(item.url || 'https://'),
       image: item.image ? String(item.image) : '',
       badge: item.badge ? String(item.badge) : '',
+      badgeColor: item.badgeColor ? String(item.badgeColor) : (item.badge_color ? String(item.badge_color) : ''),
       iconName: item.iconName || item.icon_name || 'ExternalLink',
       category: item.category || 'custom',
       gridSpan: item.gridSpan || item.grid_span || 'full',
       active: item.active !== false,
       hasBlur: Boolean(item.hasBlur || item.has_blur),
+      blurText: item.blurText !== undefined ? String(item.blurText) : (item.blur_text !== undefined ? String(item.blur_text) : ''),
     }));
 }
 
@@ -39,7 +41,7 @@ export async function getLinks(): Promise<LinkItem[]> {
   if (isNeonDatabaseConnected()) {
     try {
       const rows = await queryDb<any>(
-        `SELECT id, type, title, subtitle, url, image, badge, icon_name, category, grid_span, active, has_blur, display_order 
+        `SELECT id, type, title, subtitle, url, image, badge, badge_color, icon_name, category, grid_span, active, has_blur, blur_text, display_order 
          FROM portal_links 
          ORDER BY display_order ASC, created_at ASC;`
       );
@@ -53,11 +55,13 @@ export async function getLinks(): Promise<LinkItem[]> {
         url: row.url || '',
         image: row.image || '',
         badge: row.badge || '',
+        badgeColor: row.badge_color || '',
         iconName: row.icon_name || 'ExternalLink',
         category: row.category || 'custom',
         gridSpan: row.grid_span || 'full',
         active: row.active !== false,
         hasBlur: Boolean(row.has_blur),
+        blurText: row.blur_text || '',
       }));
 
       memoryCache = links;
@@ -103,8 +107,8 @@ export async function saveLinks(links: LinkItem[]): Promise<LinkItem[]> {
           const l = sanitized[i];
           await client.query(
             `INSERT INTO portal_links (
-              id, type, title, subtitle, url, image, badge, icon_name, category, grid_span, active, has_blur, display_order, created_at, updated_at
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+              id, type, title, subtitle, url, image, badge, badge_color, icon_name, category, grid_span, active, has_blur, blur_text, display_order, created_at, updated_at
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
             [
               l.id,
               l.type,
@@ -113,11 +117,13 @@ export async function saveLinks(links: LinkItem[]): Promise<LinkItem[]> {
               l.url,
               l.image || '',
               l.badge || '',
+              l.badgeColor || '',
               l.iconName || 'ExternalLink',
               l.category || 'custom',
               l.gridSpan || 'full',
               l.active !== false,
               Boolean(l.hasBlur),
+              l.blurText || '',
               i,
             ]
           );

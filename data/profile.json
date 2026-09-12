@@ -1,13 +1,13 @@
 {
-  "name": "Kourtney Reppert",
-  "handle": "@kourtneyreppert",
+  "name": "Julia Arani",
+  "handle": "@juju_arani",
   "showHandle": true,
   "isVerified": true,
   "followersCount": "2.4M Total Followers",
   "bio": "Criadora de Conteúdo, Empreendedora & Mentora de Estilo de Vida.",
-  "showBio": true,
+  "showBio": false,
   "avatarUrl": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=600&q=80",
   "coverImageUrl": "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=1200&q=80",
   "contactEmail": "contato@kourtneyreppert.com",
-  "showContactEmail": true
+  "showContactEmail": false
 }

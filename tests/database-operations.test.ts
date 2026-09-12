@@ -73,6 +73,9 @@ describe('Teste de Integridade e Modelos - Operações Seguras (Non-Destructive)
         type: 'card-photo',
         image: 'https://example.com/photo.jpg',
         hasBlur: true,
+        blurText: 'Revelar Conteúdo Exclusivo',
+        badge: 'Populares',
+        badgeColor: 'purple',
       },
       null,
       undefined,
@@ -85,6 +88,9 @@ describe('Teste de Integridade e Modelos - Operações Seguras (Non-Destructive)
     assert.equal(sanitized[0].type, 'cta-primary');
     assert.equal(sanitized[1].id, 'link-2');
     assert.equal(sanitized[1].hasBlur, true);
+    assert.equal(sanitized[1].blurText, 'Revelar Conteúdo Exclusivo');
+    assert.equal(sanitized[1].badge, 'Populares');
+    assert.equal(sanitized[1].badgeColor, 'purple');
   });
 
   it('deve sanitizar lista de redes sociais (sanitizeSocials)', () => {
