@@ -114,11 +114,17 @@ describe('Teste Unitário - Conexão com o Banco de Dados', () => {
   });
 
   describe('4. Verificação da Conexão com o Firebase (checkFirebaseConnection)', () => {
-    it('deve validar configuração padrão existente do Firebase', () => {
-      const result = checkFirebaseConnection();
+    it('deve validar configuração do Firebase quando credenciais são fornecidas', () => {
+      const validConfig = {
+        apiKey: 'test-api-key-123',
+        authDomain: 'projeto-teste.firebaseapp.com',
+        projectId: 'projeto-teste',
+      };
+
+      const result = checkFirebaseConnection(validConfig);
       assert.equal(result.isConnected, true);
-      assert.ok(result.projectId);
-      assert.ok(result.authDomain);
+      assert.equal(result.projectId, 'projeto-teste');
+      assert.equal(result.authDomain, 'projeto-teste.firebaseapp.com');
     });
 
     it('deve reportar não conectado se apiKey ou projectId estiverem ausentes', () => {
@@ -126,7 +132,7 @@ describe('Teste Unitário - Conexão com o Banco de Dados', () => {
         apiKey: '',
         authDomain: 'test.firebaseapp.com',
         projectId: '',
-      } as any;
+      };
 
       const result = checkFirebaseConnection(invalidConfig);
       assert.equal(result.isConnected, false);

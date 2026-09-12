@@ -57,9 +57,10 @@ describe('Segurança e Autenticação Firebase - Rotas de API e Validação de T
     });
 
     it('deve rejeitar tokens expirados no payload JWT', async () => {
+      const currentProjectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'covilink-test';
       const expiredPayload = Buffer.from(
         JSON.stringify({
-          aud: 'link-juju',
+          aud: currentProjectId,
           exp: Math.floor(Date.now() / 1000) - 3600, // expirou há 1 hora
           sub: 'user-expired-123',
         })
@@ -78,24 +79,35 @@ describe('Segurança e Autenticação Firebase - Rotas de API e Validação de T
     });
 
     it('deve rejeitar tokens com audience de projeto diferente', async () => {
-      const wrongAudPayload = Buffer.from(
-        JSON.stringify({
-          aud: 'outro-projeto-firebase',
-          exp: Math.floor(Date.now() / 1000) + 3600,
-          sub: 'user-123',
-        })
-      ).toString('base64');
+      const originalProjectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+      process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID = 'projeto-correto-covilink';
 
-      const mockJwt = `eyJhbGciOiJSUzI1NiJ9.${wrongAudPayload}.signaturemock`;
+      try {
+        const wrongAudPayload = Buffer.from(
+          JSON.stringify({
+            aud: 'outro-projeto-firebase-totalmente-diferente',
+            exp: Math.floor(Date.now() / 1000) + 3600,
+            sub: 'user-123',
+          })
+        ).toString('base64');
 
-      const req = new NextRequest('http://localhost:3000/api/links', {
-        headers: {
-          authorization: `Bearer ${mockJwt}`,
-        },
-      });
-      const result = await verifyAuth(req);
-      assert.equal(result.authenticated, false);
-      assert.match(result.error || '', /inválido para este projeto/i);
+        const mockJwt = `eyJhbGciOiJSUzI1NiJ9.${wrongAudPayload}.signaturemock`;
+
+        const req = new NextRequest('http://localhost:3000/api/links', {
+          headers: {
+            authorization: `Bearer ${mockJwt}`,
+          },
+        });
+        const result = await verifyAuth(req);
+        assert.equal(result.authenticated, false);
+        assert.match(result.error || '', /inválido para este projeto/i);
+      } finally {
+        if (originalProjectId) {
+          process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID = originalProjectId;
+        } else {
+          delete process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+        }
+      }
     });
   });
 

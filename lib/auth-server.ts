@@ -91,8 +91,8 @@ export async function verifyAuth(req: NextRequest): Promise<VerifyAuthResult> {
     }
 
     // Check project ID if present in aud
-    const expectedProjectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'link-juju';
-    if (payload.aud && payload.aud !== expectedProjectId) {
+    const expectedProjectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || process.env.FIREBASE_PROJECT_ID;
+    if (expectedProjectId && payload.aud && payload.aud !== expectedProjectId) {
       return {
         authenticated: false,
         error: 'Token inválido para este projeto do Firebase.',
@@ -103,7 +103,13 @@ export async function verifyAuth(req: NextRequest): Promise<VerifyAuthResult> {
   }
 
   // Cryptographic verification via Google Identity Toolkit REST API
-  const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY || 'AIzaSyCPawXzHliUxAqkF3faadO1kYlQw9rzDW8';
+  const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
+  if (!apiKey) {
+    return {
+      authenticated: false,
+      error: 'Servidor não configurado: NEXT_PUBLIC_FIREBASE_API_KEY não definida.',
+    };
+  }
 
   try {
     const response = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${apiKey}`, {

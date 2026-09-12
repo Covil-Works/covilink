@@ -16,6 +16,7 @@ import {
   LogIn,
 } from 'lucide-react';
 import { useAuth, getAuthErrorMessage } from '@/lib/auth-client';
+import { isFirebaseConfigured } from '@/lib/firebase';
 
 export default function AdminLoginForm() {
   const { signInEmail, resetPassword } = useAuth();
@@ -121,6 +122,15 @@ export default function AdminLoginForm() {
           )}
 
           {/* Feedback alerts */}
+          {!isFirebaseConfigured && (
+            <div className="mb-5 p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs flex items-start gap-2.5">
+              <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+              <span className="leading-relaxed">
+                As variáveis de ambiente do Firebase não estão configuradas. Adicione as chaves <code className="text-amber-200 bg-amber-950/40 px-1 py-0.5 rounded">NEXT_PUBLIC_FIREBASE_*</code> na Vercel ou no arquivo <code className="text-amber-200 bg-amber-950/40 px-1 py-0.5 rounded">.env</code> para habilitar o acesso.
+              </span>
+            </div>
+          )}
+
           {errorMessage && (
             <div className="mb-5 p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs flex items-start gap-2.5 animate-in fade-in duration-200">
               <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />

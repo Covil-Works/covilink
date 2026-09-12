@@ -210,14 +210,24 @@ export async function checkPostgresConnection(connectionUrl?: string, checkLive 
 /**
  * Checa a configuração do Firebase.
  */
-export function checkFirebaseConnection(config: typeof firebaseConfig = firebaseConfig): {
+export function checkFirebaseConnection(config?: {
+  apiKey?: string;
+  projectId?: string;
+  authDomain?: string;
+}): {
   isConnected: boolean;
   message: string;
   projectId?: string;
   authDomain?: string;
   error?: string;
 } {
-  if (!config || !config.apiKey || !config.projectId) {
+  const effectiveConfig = config || {
+    apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || firebaseConfig.apiKey,
+    projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || firebaseConfig.projectId,
+    authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || firebaseConfig.authDomain,
+  };
+
+  if (!effectiveConfig || !effectiveConfig.apiKey || !effectiveConfig.projectId) {
     return {
       isConnected: false,
       message: 'Firebase não configurado (apiKey ou projectId ausentes).',
@@ -227,9 +237,9 @@ export function checkFirebaseConnection(config: typeof firebaseConfig = firebase
 
   return {
     isConnected: true,
-    message: `Firebase inicializado para o projeto: ${config.projectId}`,
-    projectId: config.projectId,
-    authDomain: config.authDomain,
+    message: `Firebase inicializado para o projeto: ${effectiveConfig.projectId}`,
+    projectId: effectiveConfig.projectId,
+    authDomain: effectiveConfig.authDomain,
   };
 }
 

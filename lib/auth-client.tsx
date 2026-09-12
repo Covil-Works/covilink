@@ -9,7 +9,7 @@ import {
   signOut as firebaseSignOut,
   sendPasswordResetEmail,
 } from 'firebase/auth';
-import { auth } from './firebase';
+import { auth, isFirebaseConfigured } from './firebase';
 
 interface AuthContextType {
   user: User | null;
@@ -64,6 +64,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!isFirebaseConfigured || !auth || typeof auth.onIdTokenChanged !== 'function') {
+      setLoading(false);
+      return;
+    }
+
     // Listen for token changes and automatic token refreshes
     const unsubscribeToken = onIdTokenChanged(auth, async (currentUser) => {
       if (currentUser) {
@@ -107,7 +112,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const getIdToken = useCallback(async () => {
-    if (!auth.currentUser) return null;
+    if (!isFirebaseConfigured || !auth || !auth.currentUser) return null;
     try {
       const freshToken = await auth.currentUser.getIdToken(true);
       setToken(freshToken);
@@ -119,6 +124,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signInEmail = useCallback(async (email: string, pass: string) => {
+    if (!isFirebaseConfigured || !auth) {
+      throw new Error('Configuração do Firebase ausente no ambiente. Por favor, configure as variáveis NEXT_PUBLIC_FIREBASE_*.');
+    }
     const cred = await signInWithEmailAndPassword(auth, email.trim(), pass);
     const t = await cred.user.getIdToken();
     setToken(t);
@@ -127,13 +135,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signOutUser = useCallback(async () => {
-    await firebaseSignOut(auth);
+    if (isFirebaseConfigured && auth && typeof auth.signOut === 'function') {
+      await firebaseSignOut(auth);
+    }
     setUser(null);
     setToken(null);
     syncCookieToken(null);
   }, []);
 
   const resetPassword = useCallback(async (email: string) => {
+    if (!isFirebaseConfigured || !auth) {
+      throw new Error('Configuração do Firebase ausente no ambiente. Por favor, configure as variáveis NEXT_PUBLIC_FIREBASE_*.');
+    }
     await sendPasswordResetEmail(auth, email.trim());
   }, []);
 
