@@ -5,7 +5,6 @@ import { motion } from 'framer-motion';
 import {
   ExternalLink,
   Mail,
-  Calendar,
   Sparkles,
   Check,
   EyeOff
@@ -162,7 +161,7 @@ export default function LinkPortal({ profile, socials, links }: LinkPortalProps)
   const activeLinks = safeLinks.filter((l) => l && typeof l === 'object' && l.active !== false);
 
   return (
-    <div className="min-h-screen w-full max-w-full overflow-x-hidden bg-[#08090d] text-white flex flex-col items-center pb-16 relative selection:bg-brand-pink/30">
+    <div className="min-h-screen min-h-[100dvh] w-full max-w-full overflow-x-hidden bg-[#08090d] text-white flex flex-col items-center relative selection:bg-brand-pink/30">
       
       {/* Background Decorative Glow */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden z-0 w-full max-w-full">
@@ -172,7 +171,7 @@ export default function LinkPortal({ profile, socials, links }: LinkPortalProps)
       </div>
 
       {/* Main Container - Mobile First Centered Column */}
-      <main className="w-full max-w-md px-4 pt-4 z-10 flex flex-col items-center">
+      <main className="w-full max-w-md px-4 pt-4 z-10 flex flex-col items-center flex-1 overflow-x-hidden">
         
         {/* Cover Header Banner */}
         <div className="w-full h-[161px] rounded-2xl overflow-hidden relative border border-white/10 shadow-2xl mb-[-48px] bg-dark-800 shrink-0">
@@ -257,55 +256,8 @@ export default function LinkPortal({ profile, socials, links }: LinkPortalProps)
           {activeLinks.map((item) => {
             const hasValidImage = Boolean(item.image && item.image.trim() !== '');
 
-            // Type 1: CTA Primary (Glow Mentoria / Highlight Button)
-            if (item.type === 'cta-primary') {
-              return (
-                <motion.div
-                  key={item.id}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  className="w-full"
-                >
-                  <a
-                    href={item.url || '#'}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={() => handleLinkClick(item.id, item.title, item.url)}
-                    className="w-full py-4 px-6 rounded-2xl bg-white text-dark-900 font-bold text-center text-sm shadow-xl flex items-center justify-between group hover:bg-gray-100 transition-all border border-white/40 relative overflow-hidden"
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      {hasValidImage ? (
-                        <div className="w-9 h-9 rounded-xl overflow-hidden relative shrink-0 border border-dark-900/10 bg-dark-800">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
-                            src={item.image}
-                            alt={item.title}
-                            className="w-full h-full"
-                            style={{
-                              objectPosition: item.imagePosition || '50% 50%',
-                              objectFit: item.imageFit || 'cover',
-                            }}
-                            onError={(e) => {
-                              (e.currentTarget as HTMLElement).style.display = 'none';
-                            }}
-                          />
-                        </div>
-                      ) : null}
-                      <div className="text-left truncate">
-                        <span className="tracking-wide text-sm font-extrabold block text-dark-900 truncate">{item.title}</span>
-                        {item.subtitle && <span className="text-[11px] text-gray-600 block truncate">{item.subtitle}</span>}
-                      </div>
-                    </div>
-                    <div className="w-7 h-7 rounded-full bg-dark-900/10 flex items-center justify-center group-hover:bg-dark-900/20 transition shrink-0 ml-2">
-                      <Calendar className="w-4 h-4 text-dark-900" />
-                    </div>
-                  </a>
-                </motion.div>
-              );
-            }
-
-            // Type 2: Left Miniature Photo Thumbnail ("foto que só fica no lado esquerdo do botão, em miniatura e tal")
-            if (item.type === 'left-thumb') {
+            // Type 1: Left Miniature Photo Thumbnail ("left-thumb" / miniatura na esquerda)
+            if (item.type === 'left-thumb' || item.type === 'cta-primary') {
               return (
                 <motion.div
                   key={item.id}
@@ -500,7 +452,7 @@ export default function LinkPortal({ profile, socials, links }: LinkPortalProps)
 
         {/* Contact Email Block */}
         {safeProfile.showContactEmail && safeProfile.contactEmail && (
-          <div className="w-full mb-6">
+          <div className="w-full mb-4">
             <button
               onClick={() => copyEmailToClipboard(safeProfile.contactEmail)}
               className="w-full py-3.5 px-4 rounded-xl bg-dark-800/80 hover:bg-dark-700/90 border border-white/10 hover:border-white/20 text-gray-200 text-xs font-medium flex items-center justify-center gap-2 transition-all shadow-md group"
@@ -520,9 +472,9 @@ export default function LinkPortal({ profile, socials, links }: LinkPortalProps)
           </div>
         )}
 
-        {/* Footer info */}
-        <footer className="text-center pt-4 pb-6 border-t border-white/5 w-full flex flex-col items-center gap-1">
-          <p className="text-[11px] text-gray-500 font-medium">
+        {/* Footer info (Aligned to bottom on short content, flows naturally on scroll) */}
+        <footer className="w-full mt-auto pt-6 pb-6 sm:pb-8 border-t border-white/5 flex flex-col items-center text-center gap-1">
+          <p className="text-[11px] text-gray-500 font-medium tracking-wide">
             covilink
           </p>
         </footer>

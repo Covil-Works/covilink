@@ -98,7 +98,6 @@ A página DEVE se encaixar perfeitamente na largura da tela de qualquer celular 
      - `no-photo`: Botão simples sem foto.
      - `left-thumb`: Miniatura na lateral esquerda (`w-12 h-12`).
      - `card-photo`: Card visual grande (`h-48`).
-     - `cta-primary`: Botão de destaque principal.
    - Ao alterar o tipo para `no-photo`, a imagem não deve ser renderizada na página pública.
    - Suporte a tag/selo opcional no canto (`badge`, ex: *"Populares"*, *"Destaque"*) com seletor de cores (`badgeColor`, presets ou cor hexadecimal customizada), editável no painel `/admin`.
 3. **Padrão Visual do Efeito de Blur nos Botões/Cards**:

@@ -90,7 +90,7 @@ export const INITIAL_SOCIALS: SocialLink[] = [
 export const INITIAL_LINKS: LinkItem[] = [
   {
     id: 'link-mentor-call',
-    type: 'cta-primary',
+    type: 'left-thumb',
     title: 'Agendar Chamada de Mentoria VIP!',
     subtitle: 'Sessão 1-on-1 exclusiva com horário garantido',
     url: 'https://calendly.com',

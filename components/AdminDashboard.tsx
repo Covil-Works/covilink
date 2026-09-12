@@ -67,7 +67,6 @@ const BUTTON_TYPE_OPTIONS: { label: string; value: LinkItem['type']; description
   { label: 'Botão Sem Foto', value: 'no-photo', description: 'Botão simples com título, subtítulo e link' },
   { label: 'Botão com Miniatura na Esquerda', value: 'left-thumb', description: 'Foto miniatura na esquerda, título e subtítulo ao lado' },
   { label: 'Botão com Foto em Destaque (Card)', value: 'card-photo', description: 'Card visual grande com imagem de fundo' },
-  { label: 'Botão Chamada VIP (Mentoria)', value: 'cta-primary', description: 'Botão de destaque principal com brilho suave' },
 ];
 
 const BADGE_COLOR_OPTIONS = [
@@ -416,7 +415,7 @@ export default function AdminDashboard() {
     const newItem: LinkItem = {
       id: `link-${Date.now()}`,
       type: type,
-      title: type === 'cta-primary' ? 'Novo Botão de Destaque' : 'Novo Botão',
+      title: 'Novo Botão',
       subtitle: 'Descrição breve do botão',
       url: 'https://exemplo.com',
       image: '',
@@ -1521,7 +1520,7 @@ export default function AdminDashboard() {
             </div>
 
             {/* Quick Add Presets */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
               <button
                 type="button"
                 onClick={() => addNewButton('no-photo')}
@@ -1547,15 +1546,6 @@ export default function AdminDashboard() {
               >
                 <div className="text-xs font-semibold text-white">Card com Foto</div>
                 <div className="text-[10px] text-gray-400">Card visual grande</div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => addNewButton('cta-primary')}
-                className="p-3 rounded-xl border border-white/10 bg-[#0e1017] hover:border-white/20 hover:bg-white/[0.03] transition text-left space-y-1"
-              >
-                <div className="text-xs font-semibold text-white">Chamada VIP</div>
-                <div className="text-[10px] text-gray-400">Botão de destaque</div>
               </button>
             </div>
 
