@@ -377,6 +377,7 @@ export default function AdminDashboard() {
       url: 'https://exemplo.com',
       image: type !== 'no-photo' ? 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=600&q=80' : '',
       active: true,
+      hasBlur: false,
       category: 'custom',
     };
     const updated = [...linksList, newItem];
@@ -1465,7 +1466,15 @@ export default function AdminDashboard() {
                         {item.type === 'cta-primary' ? '⚡' : item.type === 'left-thumb' ? '📷' : item.type === 'card-photo' ? '🖼️' : '🔗'}
                       </span>
                       <div>
-                        <h4 className="text-sm font-bold text-white">{item.title || 'Sem título'}</h4>
+                        <div className="flex items-center gap-2">
+                          <h4 className="text-sm font-bold text-white">{item.title || 'Sem título'}</h4>
+                          {item.hasBlur && item.type !== 'no-photo' && (
+                            <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30 flex items-center gap-1">
+                              <EyeOff className="w-2.5 h-2.5 text-purple-400" />
+                              <span>Blur Ativo</span>
+                            </span>
+                          )}
+                        </div>
                         <p className="text-[11px] text-gray-400">
                           {BUTTON_TYPE_OPTIONS.find((b) => b.value === item.type)?.label || item.type}
                         </p>
@@ -1564,6 +1573,56 @@ export default function AdminDashboard() {
                           placeholder="https://..."
                           className="w-full bg-dark-900 border border-white/15 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-purple-400 font-mono"
                         />
+                      </div>
+                    )}
+
+                    {/* Blur Toggle Option */}
+                    {item.type !== 'no-photo' && (
+                      <div className="md:col-span-3 pt-1">
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 rounded-xl bg-dark-900 border border-white/10 gap-3">
+                          <div className="flex items-center gap-2.5">
+                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center border transition ${
+                              item.hasBlur 
+                                ? 'bg-purple-600/30 border-purple-500/40 text-purple-300' 
+                                : 'bg-white/5 border-white/10 text-gray-400'
+                            }`}>
+                              <EyeOff className="w-4 h-4" />
+                            </div>
+                            <div>
+                              <div className="text-xs font-bold text-white flex items-center gap-1.5">
+                                <span>Efeito Blur com Revelação (Sensível / Spoiler)</span>
+                                {item.hasBlur && (
+                                  <span className="text-[9px] bg-purple-500/30 text-purple-200 px-1.5 py-0.5 rounded font-semibold">ATIVADO</span>
+                                )}
+                              </div>
+                              <p className="text-[10px] text-gray-400">
+                                A imagem começa borrada com um ícone de olho no centro. Ao clicar, o olho e o blur desaparecem.
+                              </p>
+                            </div>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => updateLinkItem(item.id, 'hasBlur', !item.hasBlur)}
+                            className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition border shrink-0 ${
+                              item.hasBlur
+                                ? 'bg-purple-600/30 text-purple-200 border-purple-500/50 hover:bg-purple-600/40 shadow-glow-purple'
+                                : 'bg-white/5 text-gray-400 border-white/10 hover:bg-white/10 hover:text-white'
+                            }`}
+                          >
+                            {item.hasBlur ? (
+                              <>
+                                <EyeOff className="w-3.5 h-3.5 text-purple-300" />
+                                <span>Blur Ativado</span>
+                              </>
+                            ) : (
+                              <>
+                                <Eye className="w-3.5 h-3.5" />
+                                <span>Sem Blur (Normal)</span>
+                              </>
+                            )}
+                          </button>
+                        </div>
                       </div>
                     )}
                   </div>

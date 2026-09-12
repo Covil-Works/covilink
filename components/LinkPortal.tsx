@@ -8,7 +8,8 @@ import {
   Calendar,
   Sparkles,
   BarChart3,
-  Check
+  Check,
+  EyeOff
 } from 'lucide-react';
 import { ProfileConfig, SocialLink, LinkItem, INITIAL_PROFILE } from '@/lib/links-config';
 import { SocialIcon } from '@/components/SocialIcons';
@@ -22,6 +23,7 @@ interface LinkPortalProps {
 export default function LinkPortal({ profile, socials, links }: LinkPortalProps) {
   const [copiedEmail, setCopiedEmail] = useState(false);
   const [clickNotice, setClickNotice] = useState<string | null>(null);
+  const [revealedCards, setRevealedCards] = useState<Record<string, boolean>>({});
 
   const safeProfile: ProfileConfig = {
     name: profile?.name || INITIAL_PROFILE.name,
@@ -297,6 +299,8 @@ export default function LinkPortal({ profile, socials, links }: LinkPortalProps)
 
             // Type 3: Full Photo Card ("botão com foto")
             if (item.type === 'card-photo' || item.type === 'hero-card') {
+              const isBlurred = Boolean(item.hasBlur && !revealedCards[item.id]);
+
               return (
                 <motion.div
                   key={item.id}
@@ -308,37 +312,69 @@ export default function LinkPortal({ profile, socials, links }: LinkPortalProps)
                     href={item.url || '#'}
                     target="_blank"
                     rel="noopener noreferrer"
-                    onClick={() => handleLinkClick(item.id, item.title, item.url)}
-                    className="group relative w-full h-48 rounded-2xl overflow-hidden block border border-white/15 shadow-2xl glass-card-interactive bg-dark-800 shrink-0"
+                    onClick={(e) => {
+                      if (isBlurred) {
+                        e.preventDefault();
+                        setRevealedCards((prev) => ({ ...prev, [item.id]: true }));
+                        return;
+                      }
+                      handleLinkClick(item.id, item.title, item.url);
+                    }}
+                    className="group relative w-full h-48 rounded-2xl overflow-hidden block border border-white/15 shadow-2xl glass-card-interactive bg-dark-800 shrink-0 select-none"
                   >
                     {hasValidImage ? (
                       /* eslint-disable-next-line @next/next/no-img-element */
                       <img
                         src={item.image}
                         alt={item.title}
-                        className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 filter brightness-90 group-hover:brightness-100"
+                        className={`absolute inset-0 w-full h-full object-cover transition-all duration-500 filter ${
+                          isBlurred
+                            ? 'blur-lg scale-110 brightness-75'
+                            : 'blur-0 scale-100 brightness-90 group-hover:brightness-100 group-hover:scale-105'
+                        }`}
                         onError={(e) => {
                           (e.currentTarget as HTMLElement).style.display = 'none';
                         }}
                       />
                     ) : (
-                      <div className="w-full h-full bg-gradient-to-br from-brand-purple/40 to-dark-900" />
+                      <div className={`w-full h-full bg-gradient-to-br from-brand-purple/40 to-dark-900 transition-all duration-500 ${isBlurred ? 'blur-lg scale-110' : ''}`} />
                     )}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/40 to-transparent pointer-events-none" />
+
+                    {/* Central Eye-Off Icon & Blur Overlay */}
+                    {isBlurred && (
+                      <div
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setRevealedCards((prev) => ({ ...prev, [item.id]: true }));
+                        }}
+                        className="absolute inset-0 z-20 flex flex-col items-center justify-center backdrop-blur-md bg-black/40 cursor-pointer transition-all duration-300 hover:bg-black/50 group/blur"
+                        title="Clique para ver a foto"
+                      >
+                        <div className="w-14 h-14 rounded-full bg-black/70 border border-white/30 backdrop-blur-xl flex items-center justify-center shadow-glow-purple group-hover/blur:scale-110 group-hover/blur:border-brand-pink/50 transition-all duration-300">
+                          <EyeOff className="w-7 h-7 text-white drop-shadow-md group-hover/blur:text-brand-pink transition-colors" />
+                        </div>
+                        <span className="text-[11px] font-semibold text-white/90 mt-2.5 px-3.5 py-1 rounded-full bg-black/60 border border-white/20 backdrop-blur-md shadow-md group-hover/blur:border-brand-pink/40 transition-colors">
+                          Clique para ver a foto
+                        </span>
+                      </div>
+                    )}
+
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/40 to-transparent pointer-events-none z-10" />
                     
-                    <div className="absolute top-3 right-3">
+                    <div className="absolute top-3 right-3 z-10">
                       <div className="w-8 h-8 rounded-full bg-black/50 border border-white/20 backdrop-blur-md flex items-center justify-center group-hover:scale-110 transition">
                         <ExternalLink className="w-4 h-4 text-white" />
                       </div>
                     </div>
 
                     {item.badge && (
-                      <div className="absolute top-3 left-3 bg-brand-pink/80 text-white font-semibold text-[10px] uppercase tracking-wider px-2.5 py-1 rounded-full border border-pink-300/30 backdrop-blur-md">
+                      <div className="absolute top-3 left-3 z-10 bg-brand-pink/80 text-white font-semibold text-[10px] uppercase tracking-wider px-2.5 py-1 rounded-full border border-pink-300/30 backdrop-blur-md">
                         {item.badge}
                       </div>
                     )}
 
-                    <div className="absolute bottom-4 left-4 right-4 text-left">
+                    <div className="absolute bottom-4 left-4 right-4 text-left z-10">
                       <h3 className="text-base font-bold text-white mb-0.5 leading-snug drop-shadow-md">
                         {item.title}
                       </h3>
