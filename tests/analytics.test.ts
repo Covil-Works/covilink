@@ -146,4 +146,177 @@ describe('Métricas & Analytics - Funcionalidades e Classificação', () => {
       assert.equal(Object.keys(summary.clicksByLink).length, 0);
     });
   });
+
+  describe('3. Profundidade de Rolagem (Scroll Depth & Drop-off Rate)', () => {
+    it('deve calcular o funil de rolagem e a taxa de abandono (drop-off)', async () => {
+      // 4 pageviews de 4 visitantes distintos
+      await trackClick({ type: 'pageview', linkId: 'pageview', linkTitle: 'Página', url: '/', visitorId: 'user-1', device: 'mobile', browser: 'Chrome', referrer: 'Direto' });
+      await trackClick({ type: 'pageview', linkId: 'pageview', linkTitle: 'Página', url: '/', visitorId: 'user-2', device: 'mobile', browser: 'Chrome', referrer: 'Direto' });
+      await trackClick({ type: 'pageview', linkId: 'pageview', linkTitle: 'Página', url: '/', visitorId: 'user-3', device: 'mobile', browser: 'Chrome', referrer: 'Direto' });
+      await trackClick({ type: 'pageview', linkId: 'pageview', linkTitle: 'Página', url: '/', visitorId: 'user-4', device: 'mobile', browser: 'Chrome', referrer: 'Direto' });
+
+      // user-1 e user-2 rolaram até 100%
+      await trackClick({ type: 'scroll_depth', linkId: 'scroll-100', linkTitle: '100%', url: '/', visitorId: 'user-1', scrollDepth: 100, device: 'mobile', browser: 'Chrome', referrer: 'Direto' });
+      await trackClick({ type: 'scroll_depth', linkId: 'scroll-100', linkTitle: '100%', url: '/', visitorId: 'user-2', scrollDepth: 100, device: 'mobile', browser: 'Chrome', referrer: 'Direto' });
+      
+      // user-3 rolou até 50%
+      await trackClick({ type: 'scroll_depth', linkId: 'scroll-50', linkTitle: '50%', url: '/', visitorId: 'user-3', scrollDepth: 50, device: 'mobile', browser: 'Chrome', referrer: 'Direto' });
+
+      // user-4 não rolou além de 25%
+      await trackClick({ type: 'scroll_depth', linkId: 'scroll-25', linkTitle: '25%', url: '/', visitorId: 'user-4', scrollDepth: 25, device: 'mobile', browser: 'Chrome', referrer: 'Direto' });
+
+      const summary = await getAnalyticsSummary('all');
+      assert.ok(summary.scrollDepth);
+      assert.equal(summary.scrollDepth.depth25.count, 4); // todos atingiram >= 25%
+      assert.equal(summary.scrollDepth.depth50.count, 3); // user-1, user-2, user-3
+      assert.equal(summary.scrollDepth.depth100.count, 2); // user-1, user-2
+      assert.equal(summary.scrollDepth.depth100.percentage, 50); // 2 de 4 = 50%
+      assert.equal(summary.scrollDepth.dropOffRate, 50); // 50% desistiram antes do fim
+    });
+  });
+
+  describe('4. Engajamento com Conteúdo Borrado (Blur Reveal Rate & Conversão)', () => {
+    it('deve quantificar fotos reveladas e a taxa de conversão em cliques no destino', async () => {
+      // 2 pageviews
+      await trackClick({ type: 'pageview', linkId: 'pageview', linkTitle: 'Página', url: '/', visitorId: 'v-1', device: 'mobile', browser: 'Chrome', referrer: 'Instagram' });
+      await trackClick({ type: 'pageview', linkId: 'pageview', linkTitle: 'Página', url: '/', visitorId: 'v-2', device: 'mobile', browser: 'Chrome', referrer: 'Instagram' });
+
+      // 2 revelações da foto borrada
+      await trackClick({ type: 'blur_reveal', linkId: 'card-exclusivo', linkTitle: 'Foto Exclusiva', url: 'https://exemplo.com/conteudo', visitorId: 'v-1', device: 'mobile', browser: 'Chrome', referrer: 'Instagram' });
+      await trackClick({ type: 'blur_reveal', linkId: 'card-exclusivo', linkTitle: 'Foto Exclusiva', url: 'https://exemplo.com/conteudo', visitorId: 'v-2', device: 'mobile', browser: 'Chrome', referrer: 'Instagram' });
+
+      // 1 clique subsequente no link de destino
+      await trackClick({ type: 'click', linkId: 'card-exclusivo', linkTitle: 'Foto Exclusiva', url: 'https://exemplo.com/conteudo', visitorId: 'v-1', device: 'mobile', browser: 'Chrome', referrer: 'Instagram' });
+
+      const summary = await getAnalyticsSummary('all');
+      assert.ok(summary.blurEngagement);
+      assert.equal(summary.blurEngagement.totalReveals, 2);
+      assert.equal(summary.blurEngagement.revealRate, 100); // 2 reveals / 2 pageviews = 100%
+      
+      const card = summary.blurEngagement.cardsBreakdown.find((c) => c.id === 'card-exclusivo');
+      assert.ok(card);
+      assert.equal(card?.reveals, 2);
+      assert.equal(card?.clicks, 1);
+      assert.equal(card?.conversionRate, 50); // 1 clique / 2 reveals = 50%
+    });
+  });
+
+  describe('5. Tempo Médio de Permanência (Dwell Time)', () => {
+    it('deve calcular o tempo médio de permanência e segmentar em perfis de decisão', async () => {
+      // user-1: 3s (Decisão Rápida - Stories)
+      await trackClick({ type: 'dwell_time', linkId: 'dwell', linkTitle: 'Dwell', url: '/', visitorId: 'u-1', dwellSeconds: 3, device: 'mobile', browser: 'Safari', referrer: 'Instagram' });
+      // user-2: 15s (Navegação Moderada)
+      await trackClick({ type: 'dwell_time', linkId: 'dwell', linkTitle: 'Dwell', url: '/', visitorId: 'u-2', dwellSeconds: 15, device: 'mobile', browser: 'Safari', referrer: 'Instagram' });
+      // user-3: 42s (Exploração Detalhada)
+      await trackClick({ type: 'dwell_time', linkId: 'dwell', linkTitle: 'Dwell', url: '/', visitorId: 'u-3', dwellSeconds: 42, device: 'desktop', browser: 'Chrome', referrer: 'Direto' });
+
+      const summary = await getAnalyticsSummary('all');
+      assert.ok(summary.dwellTime);
+      assert.equal(summary.dwellTime.averageSeconds, 20); // (3 + 15 + 42) / 3 = 20s
+      assert.equal(summary.dwellTime.formattedAverage, '20s');
+      assert.equal(summary.dwellTime.distribution.quick.count, 1);
+      assert.equal(summary.dwellTime.distribution.medium.count, 1);
+      assert.equal(summary.dwellTime.distribution.deep.count, 1);
+    });
+  });
+
+  describe('6. Audiência e Demografia Anônima (Origem Geográfica & Idioma)', () => {
+    it('deve agrupar países, estados e idiomas anônimos', async () => {
+      await trackClick({
+        type: 'pageview',
+        linkId: 'pageview',
+        linkTitle: 'Página',
+        url: '/',
+        visitorId: 'u-sp',
+        country: 'Brasil',
+        region: 'São Paulo (SP)',
+        language: 'Português (Brasil)',
+        device: 'mobile',
+        browser: 'Chrome',
+        referrer: 'Direto',
+      });
+      await trackClick({
+        type: 'pageview',
+        linkId: 'pageview',
+        linkTitle: 'Página',
+        url: '/',
+        visitorId: 'u-rj',
+        country: 'Brasil',
+        region: 'Rio de Janeiro (RJ)',
+        language: 'Português (Brasil)',
+        device: 'mobile',
+        browser: 'Chrome',
+        referrer: 'Instagram',
+      });
+      await trackClick({
+        type: 'pageview',
+        linkId: 'pageview',
+        linkTitle: 'Página',
+        url: '/',
+        visitorId: 'u-us',
+        country: 'Estados Unidos',
+        region: 'EUA',
+        language: 'Inglês',
+        device: 'desktop',
+        browser: 'Safari',
+        referrer: 'X (Twitter)',
+      });
+
+      const summary = await getAnalyticsSummary('all');
+      assert.ok(summary.geoCountries.length >= 2);
+      assert.equal(summary.geoCountries[0].name, 'Brasil');
+      assert.ok(summary.geoRegions.some((r) => r.name === 'São Paulo (SP)'));
+      assert.ok(summary.geoRegions.some((r) => r.name === 'Rio de Janeiro (RJ)'));
+      assert.ok(summary.languages.some((l) => l.name === 'Português (Brasil)'));
+      assert.ok(summary.languages.some((l) => l.name === 'Inglês'));
+    });
+  });
+
+  describe('7. Inteligência de Horários (Heatmap Semanal & Melhores Momentos)', () => {
+    it('deve preencher a matriz 7x24 e eleger os melhores horários para publicar', async () => {
+      // Registra acessos em horários específicos
+      await trackClick({
+        type: 'pageview',
+        linkId: 'pageview',
+        linkTitle: 'Página',
+        url: '/',
+        device: 'mobile',
+        browser: 'Chrome',
+        referrer: 'Instagram',
+      });
+
+      const summary = await getAnalyticsSummary('all');
+      assert.ok(summary.heatmap);
+      assert.equal(summary.heatmap.matrix.length, 7);
+      assert.equal(summary.heatmap.matrix[0].length, 24);
+      assert.ok(summary.heatmap.bestTimes.length > 0);
+      assert.ok(summary.heatmap.bestTimes[0].recommendation);
+    });
+  });
+
+  describe('8. Alertas de Link em Alta (Spike Detection)', () => {
+    it('deve detectar aumentos atípicos no volume de cliques de um link recente', async () => {
+      // Simula 4 cliques recentes nas últimas 2 horas no link "link-viral"
+      for (let i = 0; i < 4; i++) {
+        await trackClick({
+          type: 'click',
+          linkId: 'link-viral',
+          linkTitle: 'Produto Viral',
+          url: 'https://exemplo.com/viral',
+          device: 'mobile',
+          browser: 'Safari',
+          referrer: 'TikTok',
+        });
+      }
+
+      const summary = await getAnalyticsSummary('today');
+      assert.ok(Array.isArray(summary.spikes));
+      assert.equal(summary.spikes.length, 1);
+      assert.equal(summary.spikes[0].linkId, 'link-viral');
+      assert.equal(summary.spikes[0].recentClicks, 4);
+      assert.ok(summary.spikes[0].increasePercentage >= 100);
+      assert.ok(summary.spikes[0].message.includes('salto atípico'));
+    });
+  });
 });
+

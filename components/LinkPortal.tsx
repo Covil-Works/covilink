@@ -141,6 +141,8 @@ export default function LinkPortal({ profile, socials, links }: LinkPortalProps)
             linkTitle: 'Visualização do Perfil',
             url: window.location.href,
             visitorId: vid,
+            timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+            language: navigator.language,
           });
 
           if (navigator.sendBeacon) {
@@ -158,6 +160,155 @@ export default function LinkPortal({ profile, socials, links }: LinkPortalProps)
     } catch (err) {
       console.error('Failed to register pageview:', err);
     }
+  }, []);
+
+  // Track scroll depth milestones (25%, 50%, 75%, 100%)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const reported = new Set<number>();
+
+    const sendScrollDepth = (depth: number) => {
+      if (reported.has(depth)) return;
+      reported.add(depth);
+
+      let vid = '';
+      try {
+        vid = localStorage.getItem('covilink_vid') || '';
+      } catch {}
+
+      const payload = JSON.stringify({
+        type: 'scroll_depth',
+        scrollDepth: depth,
+        linkId: `scroll-${depth}`,
+        linkTitle: `Rolagem: ${depth}%`,
+        url: window.location.href,
+        visitorId: vid,
+        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        language: navigator.language,
+      });
+
+      if (navigator.sendBeacon) {
+        navigator.sendBeacon('/api/track', payload);
+      } else {
+        fetch('/api/track', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: payload,
+          keepalive: true,
+        }).catch(() => {});
+      }
+    };
+
+    const checkScroll = () => {
+      const scrollHeight = document.documentElement.scrollHeight - window.innerHeight;
+      if (scrollHeight <= 10) {
+        [25, 50, 75, 100].forEach((d) => sendScrollDepth(d));
+        return;
+      }
+      const scrollTop = window.scrollY || document.documentElement.scrollTop;
+      const pct = Math.min(100, Math.round((scrollTop / scrollHeight) * 100));
+
+      if (pct >= 25) sendScrollDepth(25);
+      if (pct >= 50) sendScrollDepth(50);
+      if (pct >= 75) sendScrollDepth(75);
+      if (pct >= 95) sendScrollDepth(100);
+    };
+
+    let ticking = false;
+    const onScroll = () => {
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          checkScroll();
+          ticking = false;
+        });
+        ticking = true;
+      }
+    };
+
+    window.addEventListener('scroll', onScroll, { passive: true });
+    const timer = setTimeout(checkScroll, 500);
+
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      clearTimeout(timer);
+    };
+  }, []);
+
+  // Track dwell time (active time on page)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    let startTime = Date.now();
+    let accumulatedActiveSeconds = 0;
+    let isVisible = document.visibilityState === 'visible';
+
+    const sendDwell = () => {
+      let currentSessionSeconds = 0;
+      if (isVisible) {
+        currentSessionSeconds = Math.round((Date.now() - startTime) / 1000);
+      }
+      const totalSeconds = Math.min(600, Math.max(1, accumulatedActiveSeconds + currentSessionSeconds));
+
+      let vid = '';
+      try {
+        vid = localStorage.getItem('covilink_vid') || '';
+      } catch {}
+
+      const payload = JSON.stringify({
+        type: 'dwell_time',
+        dwellSeconds: totalSeconds,
+        linkId: 'dwell',
+        linkTitle: `Permanência: ${totalSeconds}s`,
+        url: window.location.href,
+        visitorId: vid,
+        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        language: navigator.language,
+      });
+
+      if (navigator.sendBeacon) {
+        navigator.sendBeacon('/api/track', payload);
+      } else {
+        fetch('/api/track', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: payload,
+          keepalive: true,
+        }).catch(() => {});
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        if (isVisible) {
+          accumulatedActiveSeconds += Math.round((Date.now() - startTime) / 1000);
+          isVisible = false;
+          sendDwell();
+        }
+      } else {
+        startTime = Date.now();
+        isVisible = true;
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('beforeunload', sendDwell);
+    window.addEventListener('pagehide', sendDwell);
+
+    const checkpointTimers = [
+      setTimeout(sendDwell, 5000),
+      setTimeout(sendDwell, 15000),
+      setTimeout(sendDwell, 30000),
+      setTimeout(sendDwell, 60000),
+    ];
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('beforeunload', sendDwell);
+      window.removeEventListener('pagehide', sendDwell);
+      checkpointTimers.forEach(clearTimeout);
+      sendDwell();
+    };
   }, []);
 
   const hasCustomCover = Boolean(
@@ -182,6 +333,8 @@ export default function LinkPortal({ profile, socials, links }: LinkPortalProps)
           linkTitle: title,
           url,
           visitorId: vid,
+          timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+          language: navigator.language,
         });
 
         if (navigator.sendBeacon) {
@@ -197,6 +350,41 @@ export default function LinkPortal({ profile, socials, links }: LinkPortalProps)
       }
     } catch (err) {
       console.error('Failed to send click metric:', err);
+    }
+  };
+
+  // Track blur reveal metric when user clicks to unblur a photo card
+  const handleBlurReveal = (id: string, title: string, url: string) => {
+    try {
+      if (typeof window !== 'undefined') {
+        let vid = '';
+        try {
+          vid = localStorage.getItem('covilink_vid') || '';
+        } catch {}
+
+        const payload = JSON.stringify({
+          type: 'blur_reveal',
+          linkId: id,
+          linkTitle: title,
+          url,
+          visitorId: vid,
+          timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+          language: navigator.language,
+        });
+
+        if (navigator.sendBeacon) {
+          navigator.sendBeacon('/api/track', payload);
+        } else {
+          fetch('/api/track', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: payload,
+            keepalive: true,
+          }).catch(() => {});
+        }
+      }
+    } catch (err) {
+      console.error('Failed to send blur reveal metric:', err);
     }
   };
 
@@ -390,6 +578,7 @@ export default function LinkPortal({ profile, socials, links }: LinkPortalProps)
                     onClick={(e) => {
                       if (isBlurred) {
                         e.preventDefault();
+                        handleBlurReveal(item.id, item.title, item.url);
                         setRevealedCards((prev) => ({ ...prev, [item.id]: true }));
                         return;
                       }
@@ -425,6 +614,7 @@ export default function LinkPortal({ profile, socials, links }: LinkPortalProps)
                         onClick={(e) => {
                           e.preventDefault();
                           e.stopPropagation();
+                          handleBlurReveal(item.id, item.title, item.url);
                           setRevealedCards((prev) => ({ ...prev, [item.id]: true }));
                         }}
                         className="absolute inset-0 z-20 flex flex-col items-center justify-center backdrop-blur-md bg-black/40 cursor-pointer transition-all duration-300 hover:bg-black/50 group/blur px-4 text-center"

@@ -34,6 +34,10 @@ import {
   LogOut,
   AlertTriangle,
   Calendar,
+  Clock,
+  Flame,
+  MapPin,
+  Languages,
 } from 'lucide-react';
 import { useAuth, authFetch } from '@/lib/auth-client';
 import { AnalyticsSummary, TimePeriod } from '@/lib/analytics';
@@ -903,8 +907,58 @@ export default function AdminDashboard() {
               </div>
             )}
 
-            {/* Metrics Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+            {/* Spike Detection Alerts (Alertas de Link em Alta) */}
+            {metrics && Array.isArray(metrics.spikes) && metrics.spikes.length > 0 ? (
+              <div className="space-y-3">
+                {metrics.spikes.map((spike) => (
+                  <div
+                    key={spike.linkId}
+                    className="p-4 rounded-2xl border border-amber-500/40 bg-gradient-to-r from-amber-950/40 via-purple-950/30 to-[#0e1017] shadow-xl relative overflow-hidden flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                  >
+                    <div className="flex items-start sm:items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0 shadow-lg shadow-amber-500/10">
+                        <Flame className="w-5 h-5 animate-pulse text-amber-400" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                            Link em Alta 🔥
+                          </span>
+                          <span className="text-xs text-amber-400 font-bold font-mono">
+                            +{spike.increasePercentage}% nas últimas 2h
+                          </span>
+                        </div>
+                        <h3 className="text-sm font-bold text-white mt-1">
+                          {spike.linkTitle}
+                        </h3>
+                        <p className="text-xs text-gray-300 mt-0.5">
+                          {spike.message}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <div className="px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 text-right">
+                        <div className="text-xs font-mono font-bold text-amber-300">{spike.recentClicks} cliques</div>
+                        <div className="text-[10px] text-gray-400">últimas 2 horas</div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="px-3.5 py-2.5 rounded-xl bg-white/[0.03] border border-white/[0.08] text-xs text-gray-400 flex items-center justify-between flex-wrap gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                  <span className="font-medium text-gray-300">Inteligência de Picos (Spike Detection)</span>
+                  <span className="text-gray-500 hidden sm:inline">•</span>
+                  <span className="text-gray-400">Tráfego estável nas últimas horas</span>
+                </div>
+                <span className="text-[11px] text-gray-500">Alertas automáticos em tempo real</span>
+              </div>
+            )}
+
+            {/* Metrics Grid (5 Cards Rápidos) */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
               {/* Card 1: Total Clicks */}
               <div className="rounded-2xl p-4 border border-white/[0.08] bg-[#0e1017]">
                 <div className="flex items-center justify-between mb-2">
@@ -959,6 +1013,20 @@ export default function AdminDashboard() {
                 </div>
                 <div className="text-[11px] text-gray-400 mt-1">
                   Sessões distintas no período
+                </div>
+              </div>
+
+              {/* Card 5: Dwell Time */}
+              <div className="rounded-2xl p-4 border border-white/[0.08] bg-[#0e1017]">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[11px] font-medium text-gray-400 uppercase tracking-wider">Tempo de Permanência</span>
+                  <Clock className="w-4 h-4 text-amber-400" />
+                </div>
+                <div className="text-2xl font-bold text-white tracking-tight font-mono">
+                  {loading ? '...' : metrics?.dwellTime?.formattedAverage || '0s'}
+                </div>
+                <div className="text-[11px] text-amber-400/90 mt-1 font-medium">
+                  Tempo médio ativo na página
                 </div>
               </div>
             </div>
@@ -1022,6 +1090,466 @@ export default function AdminDashboard() {
                   Nenhum dado de timeline disponível para o período selecionado.
                 </div>
               )}
+            </div>
+
+            {/* Comportamento & Funil de Atenção (UX & Engajamento) */}
+            <div className="space-y-4">
+              <div>
+                <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+                  <Layers className="w-4 h-4 text-brand-purple" />
+                  <span>Comportamento & Funil de Atenção (UX & Engajamento)</span>
+                </h3>
+                <p className="text-[11px] text-gray-400 mt-0.5">
+                  Profundidade de rolagem, tempo de permanência e engajamento com fotos borradas.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+                {/* Card 1: Profundidade de Rolagem (Scroll Depth & Drop-off Rate) */}
+                <div className="rounded-2xl p-5 border border-white/[0.08] bg-[#0e1017] flex flex-col justify-between space-y-4">
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <h4 className="text-xs font-semibold text-white flex items-center gap-1.5">
+                        <ArrowDown className="w-3.5 h-3.5 text-brand-pink" />
+                        <span>Profundidade de Rolagem</span>
+                      </h4>
+                      <span className="text-[10px] uppercase font-bold text-gray-400 bg-white/5 px-2 py-0.5 rounded-full border border-white/10">
+                        Scroll Depth
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-gray-400 mb-4">
+                      Percentual de visitantes que rolam a tela até as posições inferiores.
+                    </p>
+
+                    {/* Funil Visual de Rolagem */}
+                    <div className="space-y-3">
+                      <div>
+                        <div className="flex justify-between text-xs mb-1">
+                          <span className="text-gray-300">Topo da Página (25%)</span>
+                          <span className="font-bold text-white font-mono">
+                            {metrics?.scrollDepth?.depth25?.count ?? 0} ({metrics?.scrollDepth?.depth25?.percentage ?? 0}%)
+                          </span>
+                        </div>
+                        <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-gradient-to-r from-brand-purple to-brand-pink rounded-full transition-all duration-500"
+                            style={{ width: `${metrics?.scrollDepth?.depth25?.percentage ?? 0}%` }}
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <div className="flex justify-between text-xs mb-1">
+                          <span className="text-gray-300">Metade da Página (50%)</span>
+                          <span className="font-bold text-white font-mono">
+                            {metrics?.scrollDepth?.depth50?.count ?? 0} ({metrics?.scrollDepth?.depth50?.percentage ?? 0}%)
+                          </span>
+                        </div>
+                        <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-gradient-to-r from-brand-purple to-brand-pink rounded-full transition-all duration-500"
+                            style={{ width: `${metrics?.scrollDepth?.depth50?.percentage ?? 0}%` }}
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <div className="flex justify-between text-xs mb-1">
+                          <span className="text-gray-300">Base dos Links (75%)</span>
+                          <span className="font-bold text-white font-mono">
+                            {metrics?.scrollDepth?.depth75?.count ?? 0} ({metrics?.scrollDepth?.depth75?.percentage ?? 0}%)
+                          </span>
+                        </div>
+                        <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-gradient-to-r from-brand-purple to-brand-pink rounded-full transition-all duration-500"
+                            style={{ width: `${metrics?.scrollDepth?.depth75?.percentage ?? 0}%` }}
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <div className="flex justify-between text-xs mb-1">
+                          <span className="text-gray-300 font-medium">Rodapé Completo (100%)</span>
+                          <span className="font-bold text-white font-mono">
+                            {metrics?.scrollDepth?.depth100?.count ?? 0} ({metrics?.scrollDepth?.depth100?.percentage ?? 0}%)
+                          </span>
+                        </div>
+                        <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-brand-pink rounded-full transition-all duration-500"
+                            style={{ width: `${metrics?.scrollDepth?.depth100?.percentage ?? 0}%` }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Drop-off Rate Callout */}
+                  <div className="p-3 rounded-xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-between">
+                    <div>
+                      <div className="text-[10px] uppercase font-bold text-gray-400">Taxa de Desistência (Drop-off)</div>
+                      <div className="text-xs text-gray-300 mt-0.5">Saíram antes de alcançar o rodapé</div>
+                    </div>
+                    <span className="text-base font-bold font-mono text-rose-400">
+                      {metrics?.scrollDepth?.dropOffRate ?? 0}%
+                    </span>
+                  </div>
+                </div>
+
+                {/* Card 2: Tempo de Permanência (Dwell Time) */}
+                <div className="rounded-2xl p-5 border border-white/[0.08] bg-[#0e1017] flex flex-col justify-between space-y-4">
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <h4 className="text-xs font-semibold text-white flex items-center gap-1.5">
+                        <Clock className="w-3.5 h-3.5 text-amber-400" />
+                        <span>Tempo de Permanência</span>
+                      </h4>
+                      <span className="text-[10px] uppercase font-bold text-gray-400 bg-white/5 px-2 py-0.5 rounded-full border border-white/10">
+                        Dwell Time
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-gray-400 mb-4">
+                      Velocidade de tomada de decisão vs. exploração atenta.
+                    </p>
+
+                    <div className="mb-4 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-between">
+                      <div>
+                        <span className="text-[10px] uppercase font-bold text-amber-300">Média Geral por Sessão</span>
+                        <div className="text-xs text-gray-300">Tempo ativo de leitura</div>
+                      </div>
+                      <span className="text-xl font-bold font-mono text-amber-300">
+                        {metrics?.dwellTime?.formattedAverage || '0s'}
+                      </span>
+                    </div>
+
+                    {/* Dwell Distribution */}
+                    <div className="space-y-3">
+                      <div>
+                        <div className="flex justify-between text-xs mb-1">
+                          <span className="text-gray-300">Decisão Rápida (&lt; 5s - Padrão Stories)</span>
+                          <span className="font-bold text-white font-mono">
+                            {metrics?.dwellTime?.distribution?.quick?.count ?? 0} ({metrics?.dwellTime?.distribution?.quick?.percentage ?? 0}%)
+                          </span>
+                        </div>
+                        <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-brand-cyan rounded-full transition-all duration-500"
+                            style={{ width: `${metrics?.dwellTime?.distribution?.quick?.percentage ?? 0}%` }}
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <div className="flex justify-between text-xs mb-1">
+                          <span className="text-gray-300">Navegação Moderada (5s - 20s)</span>
+                          <span className="font-bold text-white font-mono">
+                            {metrics?.dwellTime?.distribution?.medium?.count ?? 0} ({metrics?.dwellTime?.distribution?.medium?.percentage ?? 0}%)
+                          </span>
+                        </div>
+                        <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-brand-purple rounded-full transition-all duration-500"
+                            style={{ width: `${metrics?.dwellTime?.distribution?.medium?.percentage ?? 0}%` }}
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <div className="flex justify-between text-xs mb-1">
+                          <span className="text-gray-300">Exploração Detalhada (&gt; 20s)</span>
+                          <span className="font-bold text-white font-mono">
+                            {metrics?.dwellTime?.distribution?.deep?.count ?? 0} ({metrics?.dwellTime?.distribution?.deep?.percentage ?? 0}%)
+                          </span>
+                        </div>
+                        <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-emerald-400 rounded-full transition-all duration-500"
+                            style={{ width: `${metrics?.dwellTime?.distribution?.deep?.percentage ?? 0}%` }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="text-[11px] text-gray-400 bg-white/[0.02] p-2.5 rounded-xl border border-white/[0.06]">
+                    💡 Decisões abaixo de 5 segundos indicam tráfego focado vindo de Stories.
+                  </div>
+                </div>
+
+                {/* Card 3: Conteúdo com Revelação de Imagem (Blur Reveal Rate) */}
+                <div className="rounded-2xl p-5 border border-white/[0.08] bg-[#0e1017] flex flex-col justify-between space-y-4">
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <h4 className="text-xs font-semibold text-white flex items-center gap-1.5">
+                        <EyeOff className="w-3.5 h-3.5 text-brand-pink" />
+                        <span>Engajamento com Foto Borrada</span>
+                      </h4>
+                      <span className="text-[10px] uppercase font-bold text-gray-400 bg-white/5 px-2 py-0.5 rounded-full border border-white/10">
+                        Blur Reveal
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-gray-400 mb-4">
+                      Curiosidade gerada por cards com efeito de revelação (hasBlur).
+                    </p>
+
+                    <div className="grid grid-cols-2 gap-2.5 mb-4">
+                      <div className="p-3 rounded-xl bg-pink-500/10 border border-pink-500/20 text-center">
+                        <div className="text-[10px] uppercase font-bold text-pink-300">Taxa de Revelação</div>
+                        <div className="text-xl font-bold font-mono text-pink-400 mt-0.5">
+                          {metrics?.blurEngagement?.revealRate ?? 0}%
+                        </div>
+                        <div className="text-[9px] text-gray-400 mt-0.5">das visualizações</div>
+                      </div>
+                      <div className="p-3 rounded-xl bg-purple-500/10 border border-purple-500/20 text-center">
+                        <div className="text-[10px] uppercase font-bold text-purple-300">Fotos Reveladas</div>
+                        <div className="text-xl font-bold font-mono text-purple-400 mt-0.5">
+                          {metrics?.blurEngagement?.totalReveals || 0}
+                        </div>
+                        <div className="text-[9px] text-gray-400 mt-0.5">total de cliques no blur</div>
+                      </div>
+                    </div>
+
+                    {/* Breakdown por Card Borrado */}
+                    <div className="space-y-2">
+                      <div className="text-[11px] font-semibold text-gray-300">Conversão por Card Borrado:</div>
+                      {metrics && Array.isArray(metrics.blurEngagement?.cardsBreakdown) && metrics.blurEngagement.cardsBreakdown.length > 0 ? (
+                        <div className="space-y-2 max-h-44 overflow-y-auto pr-1">
+                          {metrics.blurEngagement.cardsBreakdown.map((card) => (
+                            <div key={card.id} className="p-2.5 rounded-xl bg-white/[0.03] border border-white/[0.06] text-xs">
+                              <div className="font-medium text-white truncate">{card.title}</div>
+                              <div className="flex items-center justify-between text-[11px] text-gray-400 mt-1">
+                                <span>{card.reveals} revelações ➔ {card.clicks} cliques</span>
+                                <span className="font-bold text-brand-pink font-mono">{card.conversionRate}% conv.</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="py-4 text-center text-[11px] text-gray-500 bg-white/[0.02] rounded-xl border border-white/[0.04]">
+                          Nenhum card com foto borrada (hasBlur) teve revelações registradas ainda.
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="text-[11px] text-gray-400 bg-white/[0.02] p-2.5 rounded-xl border border-white/[0.06]">
+                    🎯 Mede se o impacto visual converte o visitante para o link externo final.
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Audiência e Demografia Anônima */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Card 1: Origem Geográfica */}
+              <div className="rounded-2xl p-5 border border-white/[0.08] bg-[#0e1017] space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-sm font-semibold text-white flex items-center gap-1.5">
+                      <MapPin className="w-4 h-4 text-emerald-400" />
+                      <span>Origem Geográfica (Demografia Anônima)</span>
+                    </h3>
+                    <p className="text-[11px] text-gray-400 mt-0.5">
+                      Concentração geográfica capturada via CDN/Edge sem armazenamento de dados pessoais.
+                    </p>
+                  </div>
+                  <span className="text-[10px] uppercase font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                    100% Anônimo
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+                  {/* Regiões / Estados */}
+                  <div className="space-y-3">
+                    <div className="text-xs font-semibold text-gray-300">Principais Estados / Regiões</div>
+                    {metrics && Array.isArray(metrics.geoRegions) && metrics.geoRegions.length > 0 ? (
+                      metrics.geoRegions.map((r) => (
+                        <div key={r.name}>
+                          <div className="flex justify-between text-xs mb-1">
+                            <span className="text-gray-300 truncate pr-1">{r.name}</span>
+                            <span className="font-bold text-white font-mono">{r.percentage}%</span>
+                          </div>
+                          <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-emerald-400 rounded-full"
+                              style={{ width: `${r.percentage}%` }}
+                            />
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-xs text-gray-500 py-3 text-center">Nenhum estado registrado.</p>
+                    )}
+                  </div>
+
+                  {/* Países */}
+                  <div className="space-y-3">
+                    <div className="text-xs font-semibold text-gray-300">Principais Países</div>
+                    {metrics && Array.isArray(metrics.geoCountries) && metrics.geoCountries.length > 0 ? (
+                      metrics.geoCountries.map((c) => (
+                        <div key={c.name}>
+                          <div className="flex justify-between text-xs mb-1">
+                            <span className="text-gray-300 truncate pr-1">{c.name}</span>
+                            <span className="font-bold text-white font-mono">{c.percentage}%</span>
+                          </div>
+                          <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-brand-cyan rounded-full"
+                              style={{ width: `${c.percentage}%` }}
+                            />
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-xs text-gray-500 py-3 text-center">Nenhum país registrado.</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Card 2: Idioma Preferencial do Visitante */}
+              <div className="rounded-2xl p-5 border border-white/[0.08] bg-[#0e1017] space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-sm font-semibold text-white flex items-center gap-1.5">
+                      <Languages className="w-4 h-4 text-brand-purple" />
+                      <span>Idioma Preferencial do Visitante</span>
+                    </h3>
+                    <p className="text-[11px] text-gray-400 mt-0.5">
+                      Configuração de idioma do navegador e sistema operacional do público.
+                    </p>
+                  </div>
+                  <span className="text-[10px] uppercase font-bold text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded-full border border-purple-500/20">
+                    Navegador
+                  </span>
+                </div>
+
+                <div className="space-y-3 pt-1">
+                  {metrics && Array.isArray(metrics.languages) && metrics.languages.length > 0 ? (
+                    metrics.languages.map((l) => (
+                      <div key={l.code}>
+                        <div className="flex justify-between text-xs mb-1">
+                          <span className="text-gray-300 font-medium">{l.name}</span>
+                          <span className="font-bold text-white font-mono">{l.count} ({l.percentage}%)</span>
+                        </div>
+                        <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-brand-purple rounded-full"
+                            style={{ width: `${l.percentage}%` }}
+                          />
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-xs text-gray-500 py-3 text-center">Nenhum idioma registrado ainda.</p>
+                  )}
+                </div>
+                <div className="text-[11px] text-gray-400 bg-white/[0.02] p-2.5 rounded-xl border border-white/[0.06] mt-4">
+                  🌐 Identifica demanda para lançamentos de produtos e conteúdos multilíngues.
+                </div>
+              </div>
+            </div>
+
+            {/* Mapa de Calor de Horários (Heatmap de Melhores Momentos) */}
+            <div className="rounded-2xl p-5 border border-white/[0.08] bg-[#0e1017] space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div>
+                  <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+                    <Calendar className="w-4 h-4 text-brand-pink" />
+                    <span>Mapa de Calor de Horários (Heatmap de Melhores Momentos)</span>
+                  </h3>
+                  <p className="text-[11px] text-gray-400 mt-0.5">
+                    Matriz semanal (7 dias × 24 horas) apontando os períodos de maior fluxo de acessos.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 text-[10px] text-gray-400">
+                  <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-white/5 inline-block" /> Baixo</span>
+                  <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-purple-900/60 inline-block" /> Médio</span>
+                  <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-brand-pink inline-block shadow-glow-pink" /> Pico</span>
+                </div>
+              </div>
+
+              {/* Destaque: Melhores Horários para Postar */}
+              <div className="p-4 rounded-xl bg-gradient-to-r from-purple-950/40 via-dark-800 to-pink-950/40 border border-white/10 space-y-2">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-amber-400" />
+                  <span className="text-xs font-bold text-white uppercase tracking-wider">
+                    Melhores Horários para Publicar Novos Posts e Stories
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
+                  {metrics && Array.isArray(metrics.heatmap?.bestTimes) && metrics.heatmap.bestTimes.length > 0 ? (
+                    metrics.heatmap.bestTimes.map((bt, idx) => (
+                      <div key={idx} className="p-2.5 rounded-lg bg-black/40 border border-white/10 text-xs">
+                        <div className="flex items-center justify-between">
+                          <span className="font-bold text-pink-300">{idx + 1}º Pico Semanal</span>
+                          <span className="font-mono text-gray-400 text-[10px]">{bt.hourLabel}</span>
+                        </div>
+                        <div className="font-semibold text-white mt-0.5">{bt.dayName} às {bt.hourLabel}</div>
+                        <p className="text-[10px] text-gray-400 mt-1 leading-snug line-clamp-2">{bt.recommendation}</p>
+                      </div>
+                    ))
+                  ) : null}
+                </div>
+              </div>
+
+              {/* Grid 7x24 Semanal */}
+              <div className="overflow-x-auto pb-2 pt-1">
+                <div className="min-w-[640px]">
+                  {/* Header das Horas (0h a 23h) */}
+                  <div
+                    className="text-[9px] font-mono text-gray-500 text-center mb-1"
+                    style={{ display: 'grid', gridTemplateColumns: '40px repeat(24, minmax(0, 1fr))', gap: '3px' }}
+                  >
+                    <div className="text-left pl-1">Dia</div>
+                    {Array.from({ length: 24 }).map((_, h) => (
+                      <div key={h}>
+                        {h % 3 === 0 ? `${h}h` : ''}
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Linhas dos Dias da Semana */}
+                  {(() => {
+                    const days = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+                    const maxVal = Math.max(1, metrics?.heatmap?.maxCount || 1);
+
+                    return days.map((dayLabel, dayIdx) => (
+                      <div
+                        key={dayIdx}
+                        className="items-center mb-1"
+                        style={{ display: 'grid', gridTemplateColumns: '40px repeat(24, minmax(0, 1fr))', gap: '3px' }}
+                      >
+                        <div className="text-[10px] font-medium text-gray-400 text-left pl-1">
+                          {dayLabel}
+                        </div>
+                        {Array.from({ length: 24 }).map((_, hourIdx) => {
+                          const count = metrics?.heatmap?.matrix?.[dayIdx]?.[hourIdx] || 0;
+                          const intensity = count / maxVal;
+
+                          let bgClass = 'bg-white/[0.03] text-transparent';
+                          if (count > 0) {
+                            if (intensity >= 0.7) bgClass = 'bg-brand-pink text-white font-bold shadow-glow-pink';
+                            else if (intensity >= 0.35) bgClass = 'bg-purple-600 text-white';
+                            else bgClass = 'bg-purple-900/60 text-purple-200';
+                          }
+
+                          return (
+                            <div
+                              key={hourIdx}
+                              title={`${dayLabel} às ${String(hourIdx).padStart(2, '0')}:00 - ${count} acessos`}
+                              className={`h-5 rounded flex items-center justify-center text-[9px] cursor-pointer hover:ring-1 hover:ring-white transition ${bgClass}`}
+                            >
+                              {count > 0 ? count : ''}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ));
+                  })()}
+                </div>
+              </div>
             </div>
 
             {/* Tables & Breakdowns */}

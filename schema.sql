@@ -64,8 +64,16 @@ CREATE TABLE IF NOT EXISTS click_events (
   device VARCHAR(32) DEFAULT 'mobile',
   browser VARCHAR(64) DEFAULT 'Chrome',
   referrer VARCHAR(255) DEFAULT 'Direto',
-  timestamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+  timestamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  event_type VARCHAR(32) DEFAULT 'click',
+  visitor_id VARCHAR(64) DEFAULT '',
+  country VARCHAR(64) DEFAULT '',
+  region VARCHAR(64) DEFAULT '',
+  language VARCHAR(32) DEFAULT '',
+  scroll_depth INT DEFAULT 0,
+  dwell_seconds INT DEFAULT 0
 );
 
 CREATE INDEX IF NOT EXISTS idx_click_events_link_id ON click_events(link_id);
 CREATE INDEX IF NOT EXISTS idx_click_events_timestamp ON click_events(timestamp DESC);
+CREATE INDEX IF NOT EXISTS idx_click_events_type ON click_events(event_type);
